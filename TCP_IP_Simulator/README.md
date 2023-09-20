@@ -1,6 +1,6 @@
                                         -Group: DSGO - Handin2-
 
-Members: Bekr, Mibk og Olau. 
+Members: Bekr, Mbek og Olau. 
 
 
 
