@@ -37,7 +37,7 @@ func senderInitialise(ch chan int) bool {
 		ch <- synReceived + 1 //send ack
 		return true
 	} else {
-		fmt.Println("Ack not received - shutting down")
+		fmt.Println("Ack not received - RST")
 		return false
 	}
 }
@@ -50,7 +50,7 @@ func receiverInitialise(ch chan int) bool {
 		fmt.Println("Connection established")
 		return true
 	} else {
-		fmt.Println("Ack not received - shutting down")
+		fmt.Println("Ack not received - RST")
 		return false
 	}
 }
