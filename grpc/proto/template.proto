@@ -1,0 +1,14 @@
+syntax = "proto3";
+option go_package = "github.com/MikkelBKristensen/DSHandins/grpc/proto";
+
+message TimeRequest {
+    string name = 1;
+}
+
+message TimeResponse {
+    string time = 1;
+}
+
+service getTime {
+    rpc GetTime (TimeRequest) returns (TimeResponse) {}
+}
