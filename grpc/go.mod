@@ -1,4 +1,4 @@
-module github.com/MikkelBKristensen/DSHandins
+module github.com/MikkelBKristensen/DSHandins/grpc
 
 go 1.21.0
 
