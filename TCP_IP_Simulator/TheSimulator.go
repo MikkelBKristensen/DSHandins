@@ -16,6 +16,7 @@ func random(min, max int) int {
 func sendSyn(ch chan int) int {
 	synNum := random(0, 1000)
 	ch <- synNum
+	println("Sending SYN: ", synNum)
 	return synNum
 }
 
@@ -23,18 +24,18 @@ func confirmAck(mySyn, ack int) bool {
 	if (mySyn + 1) != ack {
 		return false
 	}
+	print("Received ACK: ", ack, "\n")
 	return true
-}
-func sendData(ch chan int, data int) {
-	//send data
-	ch <- data
 }
 
 func senderInitialise(ch chan int) bool {
 	mySyn := sendSyn(ch) //send syn
 	synReceived := <-ch
 	if confirmAck(mySyn, <-ch) {
+		mySyn = mySyn + 1
+		ch <- mySyn           //send seq
 		ch <- synReceived + 1 //send ack
+		ch <- mySyn + 1       //send seq
 		return true
 	} else {
 		fmt.Println("Ack not received - RST")
@@ -46,6 +47,9 @@ func receiverInitialise(ch chan int) bool {
 	synReceived := <-ch
 	mySyn := sendSyn(ch)  //send own syn
 	ch <- synReceived + 1 //send ack
+	if <-ch != synReceived+1 {
+		return false
+	}
 	if confirmAck(mySyn, <-ch) {
 		fmt.Println("Connection established")
 		return true
@@ -64,6 +68,8 @@ func sender(ch chan int) {
 
 func receiver(ch chan int) {
 	if receiverInitialise(ch) {
+		receiveSeq := <-ch //receive seq
+		println("Received seq: ", receiveSeq)
 		receivedData := <-ch //receive data
 		fmt.Println("Received data: ", receivedData)
 	}
