@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option go_package = "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat_service/gRPC";
+
+package proto;
+
+service ChittyChat {
+  //This is where the GRPC endpoint is declared, and also were the streaming aspect is chosen.
+
+  rpc Publish(ChatReq) returns (ChatReply);
+  rpc Broadcast(Participant) returns (stream ChatReply);
+  rpc Join(Participant) returns (JoinReply);
+}
+
+// Character limits should be enforced in either client or server.
+message ChatReq{
+  string user = 1;
+  string text = 2;
+}
+
+message ChatReply{
+  string user = 1;
+  string text = 2;
+  string Timestamp = 3;
+}
+message Participant{
+  string user = 1;
+}
+message JoinReply{
+  string JoinMessage = 1;
+  string timestamp = 2;
+}
