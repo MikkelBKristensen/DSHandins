@@ -1,4 +1,4 @@
-package Server
+package ChittyChatServer
 
 //SRC: https://github.com/Mai-Sigurd/grpcTimeRequestExample#setting-up-the-server
 import (
