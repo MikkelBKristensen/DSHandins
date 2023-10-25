@@ -22,9 +22,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChittyChatClient interface {
-	Publish(ctx context.Context, in *ChatReq, opts ...grpc.CallOption) (*ChatReply, error)
-	Broadcast(ctx context.Context, in *Participant, opts ...grpc.CallOption) (ChittyChat_BroadcastClient, error)
-	Join(ctx context.Context, in *Participant, opts ...grpc.CallOption) (*JoinReply, error)
+	Publish(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_PublishClient, error)
+	Broadcast(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_BroadcastClient, error)
+	Join(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_JoinClient, error)
 }
 
 type chittyChatClient struct {
@@ -35,37 +35,61 @@ func NewChittyChatClient(cc grpc.ClientConnInterface) ChittyChatClient {
 	return &chittyChatClient{cc}
 }
 
-func (c *chittyChatClient) Publish(ctx context.Context, in *ChatReq, opts ...grpc.CallOption) (*ChatReply, error) {
-	out := new(ChatReply)
-	err := c.cc.Invoke(ctx, "/proto.ChittyChat/Publish", in, out, opts...)
+func (c *chittyChatClient) Publish(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_PublishClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[0], "/proto.ChittyChat/Publish", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &chittyChatPublishClient{stream}
+	return x, nil
 }
 
-func (c *chittyChatClient) Broadcast(ctx context.Context, in *Participant, opts ...grpc.CallOption) (ChittyChat_BroadcastClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[0], "/proto.ChittyChat/Broadcast", opts...)
+type ChittyChat_PublishClient interface {
+	Send(*ChatReq) error
+	CloseAndRecv() (*ChatReply, error)
+	grpc.ClientStream
+}
+
+type chittyChatPublishClient struct {
+	grpc.ClientStream
+}
+
+func (x *chittyChatPublishClient) Send(m *ChatReq) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *chittyChatPublishClient) CloseAndRecv() (*ChatReply, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(ChatReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *chittyChatClient) Broadcast(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_BroadcastClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[1], "/proto.ChittyChat/Broadcast", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &chittyChatBroadcastClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
 	return x, nil
 }
 
 type ChittyChat_BroadcastClient interface {
+	Send(*Participant) error
 	Recv() (*ChatReply, error)
 	grpc.ClientStream
 }
 
 type chittyChatBroadcastClient struct {
 	grpc.ClientStream
+}
+
+func (x *chittyChatBroadcastClient) Send(m *Participant) error {
+	return x.ClientStream.SendMsg(m)
 }
 
 func (x *chittyChatBroadcastClient) Recv() (*ChatReply, error) {
@@ -76,22 +100,47 @@ func (x *chittyChatBroadcastClient) Recv() (*ChatReply, error) {
 	return m, nil
 }
 
-func (c *chittyChatClient) Join(ctx context.Context, in *Participant, opts ...grpc.CallOption) (*JoinReply, error) {
-	out := new(JoinReply)
-	err := c.cc.Invoke(ctx, "/proto.ChittyChat/Join", in, out, opts...)
+func (c *chittyChatClient) Join(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_JoinClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[2], "/proto.ChittyChat/Join", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &chittyChatJoinClient{stream}
+	return x, nil
+}
+
+type ChittyChat_JoinClient interface {
+	Send(*Participant) error
+	CloseAndRecv() (*JoinReply, error)
+	grpc.ClientStream
+}
+
+type chittyChatJoinClient struct {
+	grpc.ClientStream
+}
+
+func (x *chittyChatJoinClient) Send(m *Participant) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *chittyChatJoinClient) CloseAndRecv() (*JoinReply, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(JoinReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // ChittyChatServer is the server API for ChittyChat service.
 // All implementations must embed UnimplementedChittyChatServer
 // for forward compatibility
 type ChittyChatServer interface {
-	Publish(context.Context, *ChatReq) (*ChatReply, error)
-	Broadcast(*Participant, ChittyChat_BroadcastServer) error
-	Join(context.Context, *Participant) (*JoinReply, error)
+	Publish(ChittyChat_PublishServer) error
+	Broadcast(ChittyChat_BroadcastServer) error
+	Join(ChittyChat_JoinServer) error
 	mustEmbedUnimplementedChittyChatServer()
 }
 
@@ -99,14 +148,14 @@ type ChittyChatServer interface {
 type UnimplementedChittyChatServer struct {
 }
 
-func (UnimplementedChittyChatServer) Publish(context.Context, *ChatReq) (*ChatReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
+func (UnimplementedChittyChatServer) Publish(ChittyChat_PublishServer) error {
+	return status.Errorf(codes.Unimplemented, "method Publish not implemented")
 }
-func (UnimplementedChittyChatServer) Broadcast(*Participant, ChittyChat_BroadcastServer) error {
+func (UnimplementedChittyChatServer) Broadcast(ChittyChat_BroadcastServer) error {
 	return status.Errorf(codes.Unimplemented, "method Broadcast not implemented")
 }
-func (UnimplementedChittyChatServer) Join(context.Context, *Participant) (*JoinReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
+func (UnimplementedChittyChatServer) Join(ChittyChat_JoinServer) error {
+	return status.Errorf(codes.Unimplemented, "method Join not implemented")
 }
 func (UnimplementedChittyChatServer) mustEmbedUnimplementedChittyChatServer() {}
 
@@ -121,34 +170,39 @@ func RegisterChittyChatServer(s grpc.ServiceRegistrar, srv ChittyChatServer) {
 	s.RegisterService(&ChittyChat_ServiceDesc, srv)
 }
 
-func _ChittyChat_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChatReq)
-	if err := dec(in); err != nil {
+func _ChittyChat_Publish_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ChittyChatServer).Publish(&chittyChatPublishServer{stream})
+}
+
+type ChittyChat_PublishServer interface {
+	SendAndClose(*ChatReply) error
+	Recv() (*ChatReq, error)
+	grpc.ServerStream
+}
+
+type chittyChatPublishServer struct {
+	grpc.ServerStream
+}
+
+func (x *chittyChatPublishServer) SendAndClose(m *ChatReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *chittyChatPublishServer) Recv() (*ChatReq, error) {
+	m := new(ChatReq)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(ChittyChatServer).Publish(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.ChittyChat/Publish",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChittyChatServer).Publish(ctx, req.(*ChatReq))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 func _ChittyChat_Broadcast_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Participant)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ChittyChatServer).Broadcast(m, &chittyChatBroadcastServer{stream})
+	return srv.(ChittyChatServer).Broadcast(&chittyChatBroadcastServer{stream})
 }
 
 type ChittyChat_BroadcastServer interface {
 	Send(*ChatReply) error
+	Recv() (*Participant, error)
 	grpc.ServerStream
 }
 
@@ -160,22 +214,38 @@ func (x *chittyChatBroadcastServer) Send(m *ChatReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _ChittyChat_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Participant)
-	if err := dec(in); err != nil {
+func (x *chittyChatBroadcastServer) Recv() (*Participant, error) {
+	m := new(Participant)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(ChittyChatServer).Join(ctx, in)
+	return m, nil
+}
+
+func _ChittyChat_Join_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ChittyChatServer).Join(&chittyChatJoinServer{stream})
+}
+
+type ChittyChat_JoinServer interface {
+	SendAndClose(*JoinReply) error
+	Recv() (*Participant, error)
+	grpc.ServerStream
+}
+
+type chittyChatJoinServer struct {
+	grpc.ServerStream
+}
+
+func (x *chittyChatJoinServer) SendAndClose(m *JoinReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *chittyChatJoinServer) Recv() (*Participant, error) {
+	m := new(Participant)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
 	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.ChittyChat/Join",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChittyChatServer).Join(ctx, req.(*Participant))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 // ChittyChat_ServiceDesc is the grpc.ServiceDesc for ChittyChat service.
@@ -184,21 +254,23 @@ func _ChittyChat_Join_Handler(srv interface{}, ctx context.Context, dec func(int
 var ChittyChat_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.ChittyChat",
 	HandlerType: (*ChittyChatServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Publish",
-			Handler:    _ChittyChat_Publish_Handler,
-		},
-		{
-			MethodName: "Join",
-			Handler:    _ChittyChat_Join_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Publish",
+			Handler:       _ChittyChat_Publish_Handler,
+			ClientStreams: true,
+		},
 		{
 			StreamName:    "Broadcast",
 			Handler:       _ChittyChat_Broadcast_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "Join",
+			Handler:       _ChittyChat_Join_Handler,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "gRPC/chittychat.proto",
