@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option go_package = "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat_service/gRPC";
 
-package proto;
+package gRPC;
 
 service ChittyChat {
   //This is where the GRPC endpoint is declared, and also were the streaming aspect is chosen.
