@@ -4,7 +4,7 @@
 // - protoc             v4.24.3
 // source: gRPC/chittychat.proto
 
-package gRPC
+package ChittyChat_service
 
 import (
 	context "context"
@@ -36,7 +36,7 @@ func NewChittyChatClient(cc grpc.ClientConnInterface) ChittyChatClient {
 }
 
 func (c *chittyChatClient) Publish(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_PublishClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[0], "/proto.ChittyChat/Publish", opts...)
+	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[0], "/gRPC.ChittyChat/Publish", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (x *chittyChatPublishClient) CloseAndRecv() (*ChatReply, error) {
 }
 
 func (c *chittyChatClient) Broadcast(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_BroadcastClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[1], "/proto.ChittyChat/Broadcast", opts...)
+	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[1], "/gRPC.ChittyChat/Broadcast", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (x *chittyChatBroadcastClient) Recv() (*ChatReply, error) {
 }
 
 func (c *chittyChatClient) Join(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_JoinClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[2], "/proto.ChittyChat/Join", opts...)
+	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[2], "/gRPC.ChittyChat/Join", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +252,7 @@ func (x *chittyChatJoinServer) Recv() (*Participant, error) {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ChittyChat_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.ChittyChat",
+	ServiceName: "gRPC.ChittyChat",
 	HandlerType: (*ChittyChatServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	proto "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC/chittychat.proto"
+	proto "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
 	"google.golang.org/grpc"
 )
 
