@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
 	"google.golang.org/grpc"
@@ -11,6 +12,7 @@ import (
 
 type Client struct {
 	id         int
+	Timestamp  int
 	portNumber int
 }
 
@@ -31,13 +33,24 @@ func connectToServer() (ChittyChat_service.ChittyChatClient, error) {
 	return ChittyChat_service.NewChittyChatClient(conn), nil
 }
 
-func () join() {
-	connectToServer()
+func Join(ctx context.Context) (reply ChittyChat_service.JoinReply, err error) {
+	newClient, err := connectToServer()
+	if err != nil {
+		log.Fatalf("Client couldn't Join(*Wink wink*) the server.")
+	}
+	return
+}
+func Broadcast(ctx context.Context, in *ChittyChat_service.Participant, opts ...grpc.CallOption) (client ChittyChat_service.ChittyChat_BroadcastClient, err error) {
 
 }
 
-func leave(){
+func Leave(client ChittyChat_service.ChittyChatClient) (reply ChittyChat_service.JoinReply, err error) {
+	return nil, err
+}
 
+func Publish(ctx context.Context, req *ChittyChat_service.ChatReq, opts ...grpc.CallOption) (reply *ChittyChat_service.ChatReply, err error) {
+
+	return nil, err
 }
 
 func main() {
@@ -45,10 +58,7 @@ func main() {
 	flag.Parse()
 
 	// Create a client
-	client := &Client{
-		//Hardcoded
-		id:         1,
-		portNumber: *clientPort,
-	}
+	client, err := connectToServer()
+	client.join()
 
 }

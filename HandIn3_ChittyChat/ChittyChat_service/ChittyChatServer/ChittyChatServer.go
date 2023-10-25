@@ -44,33 +44,31 @@ func startServer(server *Server) {
 	}
 }
 
-func (s *Server) Publish(ctx context.Context, reply *ChittyChat_service.ChatReq) (*ChittyChat_service.ChatReply, error) {
-	if len(reply.Text) > 128 {
+func (s *Server) Publish(ctx context.Context, req *ChittyChat_service.ChatReq) (*ChittyChat_service.ChatReply, error) {
+	if len(req.Text) > 128 {
 		return nil, errors.New("message is to long to be published")
 	}
-	return &ChittyChat_service.ChatReply{Text: fmt.Sprintf("Received: %s", reply.Text)}, nil
+	return &ChittyChat_service.ChatReply{Text: fmt.Sprintf("Received: %s", req.Text)}, nil
 
 }
 
-func (s *Server) Broadcast(stream ChittyChat_service.ChittyChat_BroadcastServer) error {
+func (s *Server) Broadcast(stream ChittyChat_service.ChittyChat_BroadcastServer) {
 	// Implement your Broadcast logic
 	// This method should handle streaming messages from the client
-	return nil
+
 }
 
-func (s *Server) Join(stream ChittyChat_service.ChittyChat_JoinServer) error {
+func (s *Server) Join(ctx context.Context, reply *ChittyChat_service.Participant) (*ChittyChat_service.JoinReply, error) {
 	// Implement your Join logic
-	// This method should handle streaming participant information from the client
-	return nil
+	// This method should handle joining participants
+	return nil, nil
 }
 
-/*func (c *Server) AskForTime(ctx context.Context, in *proto.AskForTimeMessage) (*proto.TimeMessage, error) {
-	log.Printf("Client with ID %d asked for the time\n", in.ClientId)
-	return &proto.TimeMessage{
-		Time:       time.Now().String(),
-		ServerName: c.name,
-	}, nil
-}*/
+func (s *Server) Leave(ctx context.Context, reply *ChittyChat_service.Participant) (*ChittyChat_service.JoinReply, error) {
+	// Implement your Leave logic
+	// This method should handle leaving participants
+	return nil, nil
+}
 
 func main() {
 	// Get the port from the command line when the server is run
