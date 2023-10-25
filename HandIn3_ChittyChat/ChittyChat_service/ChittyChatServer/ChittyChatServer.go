@@ -60,6 +60,24 @@ func startServer(server *Server) {
 	}
 }
 
+func (s *Server) Publish(stream ChittyChat_service.ChittyChat_PublishServer) error {
+	// Implement your Publish logic
+	// This method should handle streaming messages from the client
+	return nil
+}
+
+func (s *Server) Broadcast(stream ChittyChat_service.ChittyChat_BroadcastServer) error {
+	// Implement your Broadcast logic
+	// This method should handle streaming messages from the client
+	return nil
+}
+
+func (s *Server) Join(stream ChittyChat_service.ChittyChat_JoinServer) error {
+	// Implement your Join logic
+	// This method should handle streaming participant information from the client
+	return nil
+}
+
 /*func (c *Server) AskForTime(ctx context.Context, in *proto.AskForTimeMessage) (*proto.TimeMessage, error) {
 	log.Printf("Client with ID %d asked for the time\n", in.ClientId)
 	return &proto.TimeMessage{

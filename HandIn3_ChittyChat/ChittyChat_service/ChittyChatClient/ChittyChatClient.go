@@ -48,4 +48,4 @@ func connectToServer() (ChittyChat_service.ChittyChatClient, error) {
 	return ChittyChat_service.NewChittyChatClient(conn), nil
 }
 
-func join() ()
+func join()
