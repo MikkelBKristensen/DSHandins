@@ -2,22 +2,19 @@ package ChittyChatServer
 
 //SRC: https://github.com/Mai-Sigurd/grpcTimeRequestExample#setting-up-the-server
 import (
-	"context"
 	"flag"
+	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
+	"google.golang.org/grpc"
 	"log"
 	"net"
 	"strconv"
-	"time"
-
-	proto "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
-	"google.golang.org/grpc"
 )
 
 // Struct that will be used to represent the Server.
 type Server struct {
-	proto.UnimplementedTimeAskServer // Necessary
-	name                             string
-	port                             int
+	ChittyChat_service.UnimplementedChittyChatServer // Necessary
+	name                                             string
+	port                                             int
 }
 
 // Used to get the user-defined port for the server from the command line
@@ -32,7 +29,7 @@ func main() {
 		name: "serverName",
 		port: *port,
 	}
-	2
+
 	// Start the server
 	go startServer(server)
 
@@ -56,17 +53,17 @@ func startServer(server *Server) {
 	log.Printf("Started server at port: %d\n", server.port)
 
 	// Register the grpc server and serve its listener
-	proto.RegisterTimeAskServer(grpcServer, server)
+	ChittyChat_service.RegisterChittyChatServer(grpcServer, server)
 	serveError := grpcServer.Serve(listener)
 	if serveError != nil {
 		log.Fatalf("Could not serve listener")
 	}
 }
 
-func (c *Server) AskForTime(ctx context.Context, in *proto.AskForTimeMessage) (*proto.TimeMessage, error) {
+/*func (c *Server) AskForTime(ctx context.Context, in *proto.AskForTimeMessage) (*proto.TimeMessage, error) {
 	log.Printf("Client with ID %d asked for the time\n", in.ClientId)
 	return &proto.TimeMessage{
 		Time:       time.Now().String(),
 		ServerName: c.name,
 	}, nil
-}
+}*/
