@@ -7,9 +7,9 @@ package proto;
 service ChittyChat {
   //This is where the GRPC endpoint is declared, and also were the streaming aspect is chosen.
 
-  rpc Publish(stream ChatReq) returns (ChatReply);
-  rpc Broadcast(stream Participant) returns (stream ChatReply);
-  rpc Join(stream Participant) returns (JoinReply);
+  rpc Publish (stream ChatReq) returns (ChatReply);
+  rpc Broadcast (stream Participant) returns (stream ChatReply);
+  rpc Join (stream Participant) returns (JoinReply);
 }
 
 // Character limits should be enforced in either client or server.
