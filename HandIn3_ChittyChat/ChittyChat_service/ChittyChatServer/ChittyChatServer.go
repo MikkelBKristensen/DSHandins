@@ -2,7 +2,10 @@ package ChittyChatServer
 
 //SRC: https://github.com/Mai-Sigurd/grpcTimeRequestExample#setting-up-the-server
 import (
+	"context"
+	"errors"
 	"flag"
+	"fmt"
 	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
 	"google.golang.org/grpc"
 	"log"
@@ -19,25 +22,6 @@ type Server struct {
 
 // Used to get the user-defined port for the server from the command line
 var port = flag.Int("port", 0, "server port number")
-
-func main() {
-	// Get the port from the command line when the server is run
-	flag.Parse()
-
-	// Create a server struct
-	server := &Server{
-		name: "serverName",
-		port: *port,
-	}
-
-	// Start the server
-	go startServer(server)
-
-	// Keep the server running until it is manually quit
-	for {
-
-	}
-}
 
 func startServer(server *Server) {
 
@@ -60,10 +44,12 @@ func startServer(server *Server) {
 	}
 }
 
-func (s *Server) Publish(stream ChittyChat_service.ChittyChat_PublishServer) error {
-	// Implement your Publish logic
-	// This method should handle streaming messages from the client
-	return nil
+func (s *Server) Publish(ctx context.Context, reply *ChittyChat_service.ChatReq) (*ChittyChat_service.ChatReply, error) {
+	if len(reply.Text) > 128 {
+		return nil, errors.New("message is to long to be published")
+	}
+	return &ChittyChat_service.ChatReply{Text: fmt.Sprintf("Received: %s", reply.Text)}, nil
+
 }
 
 func (s *Server) Broadcast(stream ChittyChat_service.ChittyChat_BroadcastServer) error {
@@ -85,3 +71,18 @@ func (s *Server) Join(stream ChittyChat_service.ChittyChat_JoinServer) error {
 		ServerName: c.name,
 	}, nil
 }*/
+
+func main() {
+	// Get the port from the command line when the server is run
+	flag.Parse()
+
+	// Create a server struct
+	server := &Server{
+		name: "serverName",
+		port: *port,
+	}
+
+	// Start the server
+	go startServer(server)
+
+}

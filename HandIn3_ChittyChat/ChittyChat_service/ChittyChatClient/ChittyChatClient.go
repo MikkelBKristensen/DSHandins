@@ -15,27 +15,10 @@ type Client struct {
 }
 
 var (
+	//Hardcoded
 	clientPort = flag.Int("cPort", 0, "client port number")
 	serverPort = flag.Int("sPort", 0, "server port number (should match the port used for the server)")
 )
-
-func main() {
-	// Parse the flags to get the port for the client
-	flag.Parse()
-
-	// Create a client
-	client := &Client{
-		id:         1,
-		portNumber: *clientPort,
-	}
-
-	// Wait for the client (user) to ask for the time
-	go waitForTimeRequest(client)
-
-	for {
-
-	}
-}
 
 func connectToServer() (ChittyChat_service.ChittyChatClient, error) {
 	// Dial the server at the specified port.
@@ -48,4 +31,24 @@ func connectToServer() (ChittyChat_service.ChittyChatClient, error) {
 	return ChittyChat_service.NewChittyChatClient(conn), nil
 }
 
-func join()
+func () join() {
+	connectToServer()
+
+}
+
+func leave(){
+
+}
+
+func main() {
+	// Parse the flags to get the port for the client
+	flag.Parse()
+
+	// Create a client
+	client := &Client{
+		//Hardcoded
+		id:         1,
+		portNumber: *clientPort,
+	}
+
+}
