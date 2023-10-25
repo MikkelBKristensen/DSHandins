@@ -2,10 +2,7 @@ package ChittyChatServer
 
 //SRC: https://github.com/Mai-Sigurd/grpcTimeRequestExample#setting-up-the-server
 import (
-	"context"
-	"errors"
 	"flag"
-	"fmt"
 	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
 	"google.golang.org/grpc"
 	"log"
@@ -44,30 +41,8 @@ func startServer(server *Server) {
 	}
 }
 
-func (s *Server) Publish(ctx context.Context, req *ChittyChat_service.ChatReq) (*ChittyChat_service.ChatReply, error) {
-	if len(req.Text) > 128 {
-		return nil, errors.New("message is to long to be published")
-	}
-	return &ChittyChat_service.ChatReply{Text: fmt.Sprintf("Received: %s", req.Text)}, nil
+func ChatService(server ChittyChat_service.ChittyChat_ChatServiceServer) {
 
-}
-
-func (s *Server) Broadcast(stream ChittyChat_service.ChittyChat_BroadcastServer) {
-	// Implement your Broadcast logic
-	// This method should handle streaming messages from the client
-
-}
-
-func (s *Server) Join(ctx context.Context, reply *ChittyChat_service.Participant) (*ChittyChat_service.JoinReply, error) {
-	// Implement your Join logic
-	// This method should handle joining participants
-	return nil, nil
-}
-
-func (s *Server) Leave(ctx context.Context, reply *ChittyChat_service.Participant) (*ChittyChat_service.JoinReply, error) {
-	// Implement your Leave logic
-	// This method should handle leaving participants
-	return nil, nil
 }
 
 func main() {
