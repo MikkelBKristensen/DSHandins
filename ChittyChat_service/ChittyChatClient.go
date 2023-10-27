@@ -3,15 +3,18 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
-	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
+	"github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
+	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type Client struct {
@@ -22,7 +25,6 @@ type Client struct {
 }
 
 var (
-	//Hardcoded
 	clientPort = flag.Int("cPort", 0, "client port number")
 	serverPort = flag.Int("sPort", 0, "server port number (should match the port used for the server)")
 )
@@ -47,6 +49,17 @@ func sendMessage() {
 
 func recieveMessage() {
 
+}
+func messageValidation(msg gRPC.Message) error {
+	if len(msg.Message) > 128 {
+		err := errors.New("!error! Your message is too long, the maximum is 128 characters")
+		return err
+	}
+	if !utf8.ValidString(msg.Message) {
+		err := errors.New("!error! Your message does not comply with UTF8 rules")
+		return err
+	}
+	return nil
 }
 
 func main() {

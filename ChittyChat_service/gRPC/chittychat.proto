@@ -1,23 +1,19 @@
 syntax = "proto3";
 
-option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/Main/HandIn3_ChittyChat/ChittyChat_service/gRPC";
+option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/Main/ChittyChat_service/gRPC";
 
-package ChittyChat_service;
+package gRPC;
 
 service ChittyChat {
 
-  rpc ChatService(stream ClientMessage) returns (stream ServerMessage);
+  rpc ChatService(stream Message) returns (stream Message);
 
 }
 
-message ClientMessage {
+message Message {
   string Username = 1;
   string Message = 2;
   int32 Timestamp = 3;
 }
-message ServerMessage {
-  string Username = 1;
-  string Message = 2;
-  int32 Timestamp = 3;
-}
+
 

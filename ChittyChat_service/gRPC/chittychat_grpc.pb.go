@@ -34,7 +34,7 @@ func NewChittyChatClient(cc grpc.ClientConnInterface) ChittyChatClient {
 }
 
 func (c *chittyChatClient) ChatService(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_ChatServiceClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[0], "/ChittyChat_service.ChittyChat/ChatService", opts...)
+	stream, err := c.cc.NewStream(ctx, &ChittyChat_ServiceDesc.Streams[0], "/gRPC.ChittyChat/ChatService", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +43,8 @@ func (c *chittyChatClient) ChatService(ctx context.Context, opts ...grpc.CallOpt
 }
 
 type ChittyChat_ChatServiceClient interface {
-	Send(*ClientMessage) error
-	Recv() (*ServerMessage, error)
+	Send(*Message) error
+	Recv() (*Message, error)
 	grpc.ClientStream
 }
 
@@ -52,12 +52,12 @@ type chittyChatChatServiceClient struct {
 	grpc.ClientStream
 }
 
-func (x *chittyChatChatServiceClient) Send(m *ClientMessage) error {
+func (x *chittyChatChatServiceClient) Send(m *Message) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *chittyChatChatServiceClient) Recv() (*ServerMessage, error) {
-	m := new(ServerMessage)
+func (x *chittyChatChatServiceClient) Recv() (*Message, error) {
+	m := new(Message)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -97,8 +97,8 @@ func _ChittyChat_ChatService_Handler(srv interface{}, stream grpc.ServerStream) 
 }
 
 type ChittyChat_ChatServiceServer interface {
-	Send(*ServerMessage) error
-	Recv() (*ClientMessage, error)
+	Send(*Message) error
+	Recv() (*Message, error)
 	grpc.ServerStream
 }
 
@@ -106,12 +106,12 @@ type chittyChatChatServiceServer struct {
 	grpc.ServerStream
 }
 
-func (x *chittyChatChatServiceServer) Send(m *ServerMessage) error {
+func (x *chittyChatChatServiceServer) Send(m *Message) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *chittyChatChatServiceServer) Recv() (*ClientMessage, error) {
-	m := new(ClientMessage)
+func (x *chittyChatChatServiceServer) Recv() (*Message, error) {
+	m := new(Message)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (x *chittyChatChatServiceServer) Recv() (*ClientMessage, error) {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ChittyChat_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ChittyChat_service.ChittyChat",
+	ServiceName: "gRPC.ChittyChat",
 	HandlerType: (*ChittyChatServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
