@@ -4,23 +4,20 @@ package main
 
 import (
 	"flag"
+	gRPC "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
+	"google.golang.org/grpc"
 	"log"
 	"net"
-	"strconv"
-
-	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
-	"github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
-	"google.golang.org/grpc"
 )
 
 // Server Struct that will be used to represent the Server.
 type Server struct {
-	ChittyChat_service.UnimplementedChittyChatServer // Necessary
-	name                                             string
-	port                                             int
-	Clock                                            int32
-	ClientStreams                                    []gRPC.ChittyChat_ChatServiceServer
-	Usernames                                        map[gRPC.ChittyChat_ChatServiceServer]string
+	gRPC.UnimplementedChittyChatServer // Necessary
+	name                               string
+	port                               int
+	Clock                              int32
+	ClientStreams                      []gRPC.ChittyChat_ChatServiceServer
+	Usernames                          map[gRPC.ChittyChat_ChatServiceServer]string
 }
 
 //@TODO ADD Clock functionality
@@ -33,7 +30,7 @@ func (s Server) mustEmbedUnimplementedChittyChatServer() {
 // Used to get the user-defined port for the server from the command line
 var port = flag.Int("port", 0, "server port number")
 
-func startServer(server *Server) {
+/*func startServer(server *Server) {
 
 	// Create a new grpc server
 	grpcServer := grpc.NewServer()
@@ -49,12 +46,12 @@ func startServer(server *Server) {
 	// Register the grpc server and serve its listener
 	//@TODO Fix the weird server thing pls<3
 	//chatServer :=
-	ChittyChat_service.RegisterChittyChatServer(grpcServer, chatServer)
+	gRPC.RegisterChittyChatServer(grpcServer, chatServer)
 	serveError := grpcServer.Serve(listener)
 	if serveError != nil {
 		log.Fatalf("Could not serve listener")
 	}
-}
+}*/
 
 func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 	s.ClientStreams = append(s.ClientStreams, stream)
@@ -133,7 +130,7 @@ func main() {
 		Usernames: make(map[gRPC.ChittyChat_ChatServiceServer]string),
 	}
 
-	ChittyChat_service.RegisterChittyChatServer(grpcServer, service)
+	gRPC.RegisterChittyChatServer(grpcServer, service)
 	grpcServer.Serve(listener)
 
 }

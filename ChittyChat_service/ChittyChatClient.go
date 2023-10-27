@@ -7,8 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
-	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
+	gRPC "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
@@ -44,7 +43,7 @@ func connectToServer() (gRPC.ChittyChatClient, error) {
 	} else {
 		log.Printf("Client connected to the server at port %d\n", *serverPort)
 	}
-	return ChittyChat_service.NewChittyChatClient(conn), nil
+	return gRPC.NewChittyChatClient(conn), nil
 }
 
 func sendMessage(text string, stream gRPC.ChittyChat_ChatServiceClient) {
