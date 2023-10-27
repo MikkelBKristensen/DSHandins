@@ -53,7 +53,7 @@ func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 			return
 		}
 		//@TODO Implement time and iteration
-		fmt.Print(recvMsg.Username, recvMsg.Message)
+		fmt.Printf(recvMsg.Username + ": " + recvMsg.Message + "\n")
 	}
 
 }
@@ -92,7 +92,7 @@ func main() {
 
 	//Sending intial join message to the stream
 	//@TODO Insert lamport time
-	sendMessage("Participant "+username+" joined ChittyChat @ [INSERT LAMPORT TIME]", stream)
+	sendMessage("Participant "+username+" joined ChittyChat @ [INSERT LAMPORT TIME] \n", stream)
 
 	//Listening to messages on the stream
 	go receiveMessage(stream)
