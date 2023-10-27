@@ -4,7 +4,7 @@ package main
 
 import (
 	"flag"
-	gRPC "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
+	"github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -13,8 +13,6 @@ import (
 // Server Struct that will be used to represent the Server.
 type Server struct {
 	gRPC.UnimplementedChittyChatServer // Necessary
-	name                               string
-	port                               int
 	Clock                              int32
 	ClientStreams                      []gRPC.ChittyChat_ChatServiceServer
 	Usernames                          map[gRPC.ChittyChat_ChatServiceServer]string
@@ -59,17 +57,17 @@ func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 	//The server should keep receiving messages and broadcasting them:
 	for {
 
-		clientmessage, err := stream.Recv()
+		clientMessage, err := stream.Recv()
 		if err != nil {
 			s.endStreamForClient(stream)
 			return err
 		}
 
 		if !RegisteredClient {
-			s.Usernames[stream] = clientmessage.GetUsername()
+			s.Usernames[stream] = clientMessage.GetUsername()
 			RegisteredClient = true
 		}
-		s.Broadcast(clientmessage)
+		s.Broadcast(clientMessage)
 		//Check if Client already has a stream
 
 	}
@@ -108,10 +106,10 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 func main() {
 
 	// Set port number
-	Port := "5000"
+	Port := "5001"
 
 	// Create listener
-	listener, err := net.Listen("tcp", ":"+Port)
+	listener, err := net.Listen("tcp", ":5001")
 	if err != nil {
 		log.Fatalf("Could not listen to port: %d %v", Port, err)
 	}
@@ -120,17 +118,16 @@ func main() {
 	// Create new server
 	grpcServer := grpc.NewServer()
 
-	err = grpcServer.Serve(listener)
-	if err != nil {
-		log.Fatalf("Could not start server", err)
-	}
-
 	// Register ChatService
 	service := &Server{
 		Usernames: make(map[gRPC.ChittyChat_ChatServiceServer]string),
 	}
 
 	gRPC.RegisterChittyChatServer(grpcServer, service)
-	grpcServer.Serve(listener)
 
+	grpcServer.Serve(listener)
+	/*err = grpcServer.Serve(listener)
+	if err != nil {
+		log.Fatalf("Could not start server", err)
+	}*/
 }
