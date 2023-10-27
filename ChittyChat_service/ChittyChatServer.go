@@ -4,12 +4,13 @@ package main
 
 import (
 	"flag"
-	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
-	"github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"strconv"
+
+	ChittyChat_service "github.com/MikkelBKristensen/DSHandins/ChittyChat_service/gRPC"
+	"github.com/MikkelBKristensen/DSHandins/HandIn3_ChittyChat/ChittyChat_service/gRPC"
+	"google.golang.org/grpc"
 )
 
 // Server Struct that will be used to represent the Server.
@@ -109,16 +110,30 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 
 func main() {
 
-	// Get the port from the command line when the server is run
-	flag.Parse()
+	// Set port number
+	Port := "5000"
 
-	// Create a server struct
-	server := &Server{
-		name: "serverName",
-		port: *port,
+	// Create listener
+	listener, err := net.Listen("tcp", ":"+Port)
+	if err != nil {
+		log.Fatalf("Could not listen to port: %d %v", Port, err)
+	}
+	log.Println("Now listening on port:" + Port)
+
+	// Create new server
+	grpcServer := grpc.NewServer()
+
+	err = grpcServer.Serve(listener)
+	if err != nil {
+		log.Fatalf("Could not start server", err)
 	}
 
-	// Start the server
-	go startServer(server)
+	// Register ChatService
+	service := &Server{
+		Usernames: make(map[gRPC.ChittyChat_ChatServiceServer]string),
+	}
+
+	ChittyChat_service.RegisterChittyChatServer(grpcServer, service)
+	grpcServer.Serve(listener)
 
 }
