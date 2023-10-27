@@ -18,6 +18,7 @@ type Client struct {
 	id         int
 	Timestamp  int
 	portNumber int
+	stream     ChittyChat_service.ChittyChat_ChatServiceServer
 }
 
 var (
@@ -35,6 +36,17 @@ func connectToServer() (ChittyChat_service.ChittyChatClient, error) {
 		log.Printf("Client connected to the server at port %d\n", *serverPort)
 	}
 	return ChittyChat_service.NewChittyChatClient(conn), nil
+}
+
+func ChatService(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_ChatServiceClient, error) {
+
+}
+func sendMessage() {
+
+}
+
+func recieveMessage() {
+
 }
 
 func main() {
@@ -68,5 +80,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not connect to the ChittyChat service %v", err)
 	}
+
+	client := Client{}
 
 }

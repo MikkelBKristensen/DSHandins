@@ -6,14 +6,18 @@ package ChittyChat_service;
 
 service ChittyChat {
 
-  rpc ChatService(stream Message) returns (stream Message){};
+  rpc ChatService(stream ClientMessage) returns (stream ServerMessage);
 
 }
 
-message Message {
+message ClientMessage {
   string Username = 1;
   string Message = 2;
   int32 Timestamp = 3;
 }
-
+message ServerMessage {
+  string Username = 1;
+  string Message = 2;
+  int32 Timestamp = 3;
+}
 

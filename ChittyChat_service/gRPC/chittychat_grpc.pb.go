@@ -43,8 +43,8 @@ func (c *chittyChatClient) ChatService(ctx context.Context, opts ...grpc.CallOpt
 }
 
 type ChittyChat_ChatServiceClient interface {
-	Send(*Message) error
-	Recv() (*Message, error)
+	Send(*ClientMessage) error
+	Recv() (*ServerMessage, error)
 	grpc.ClientStream
 }
 
@@ -52,12 +52,12 @@ type chittyChatChatServiceClient struct {
 	grpc.ClientStream
 }
 
-func (x *chittyChatChatServiceClient) Send(m *Message) error {
+func (x *chittyChatChatServiceClient) Send(m *ClientMessage) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *chittyChatChatServiceClient) Recv() (*Message, error) {
-	m := new(Message)
+func (x *chittyChatChatServiceClient) Recv() (*ServerMessage, error) {
+	m := new(ServerMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -97,8 +97,8 @@ func _ChittyChat_ChatService_Handler(srv interface{}, stream grpc.ServerStream) 
 }
 
 type ChittyChat_ChatServiceServer interface {
-	Send(*Message) error
-	Recv() (*Message, error)
+	Send(*ServerMessage) error
+	Recv() (*ClientMessage, error)
 	grpc.ServerStream
 }
 
@@ -106,12 +106,12 @@ type chittyChatChatServiceServer struct {
 	grpc.ServerStream
 }
 
-func (x *chittyChatChatServiceServer) Send(m *Message) error {
+func (x *chittyChatChatServiceServer) Send(m *ServerMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *chittyChatChatServiceServer) Recv() (*Message, error) {
-	m := new(Message)
+func (x *chittyChatChatServiceServer) Recv() (*ClientMessage, error) {
+	m := new(ClientMessage)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
