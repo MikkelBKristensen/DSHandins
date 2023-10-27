@@ -16,7 +16,7 @@ func main() {
 	// Create listener
 	listener, err := net.Listen("tcp", ":"+Port)
 	if err != nil {
-		log.Fatalf("Could not listen to port: ", Port, err)
+		log.Fatalf("Could not listen to port: %d %v", Port, err)
 	}
 	log.Println("Now listening on port:" + Port)
 
@@ -27,6 +27,6 @@ func main() {
 
 	err = grpcServer.Serve(listener)
 	if err != nil {
-		log.Fatalf("Could not start saerver", err)
+		log.Fatalf("Could not start server", err)
 	}
 }

@@ -47,7 +47,8 @@ func startServer(server *Server) {
 
 	// Register the grpc server and serve its listener
 	//@TODO Fix the weird server thing pls<3
-	ChittyChat_service.RegisterChittyChatServer(grpcServer, server)
+	//chatServer :=
+	ChittyChat_service.RegisterChittyChatServer(grpcServer, chatServer)
 	serveError := grpcServer.Serve(listener)
 	if serveError != nil {
 		log.Fatalf("Could not serve listener")

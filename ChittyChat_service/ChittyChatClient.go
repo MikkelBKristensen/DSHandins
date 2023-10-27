@@ -65,15 +65,15 @@ func sendMessage(text string, stream gRPC.ChittyChat_ChatServiceClient) {
 
 }
 
-func recieveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
+func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 	for {
-		incoming, err := stream.Recv()
+		recvMsg, err := stream.Recv()
 		if err != nil {
 			log.Fatalf("Could not recieve message", err)
 			return
 		}
-
-		fmt.Printf("%s: %s\n", incoming.Username, incoming.Message)
+		//@TODO Implement time and iteration
+		fmt.Print(recvMsg.Username, recvMsg.Message)
 	}
 
 }
@@ -114,7 +114,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	// Eventuelt brug connectToServer i stedet for følgende
+	//@TODO Eventuelt brug connectToServer i stedet for følgende
 	client := gRPC.NewChittyChatClient(conn)
 
 	stream, err := client.ChatService(context.Background())
@@ -126,6 +126,11 @@ func main() {
 	fmt.Scanln(&username)
 	fmt.Printf("Username is: " + username)
 
-	sendMessage("Client: "+username+" has joined the ", stream)
+	//Sending intial join message to the stream
+	//@TODO Insert lamport time
+	sendMessage("Participant "+username+" joined ChittyChat @ [INSERT LAMPORT TIME]", stream)
+
+	//Listening to messages on the stream
+	go receiveMessage(stream)
 
 }
