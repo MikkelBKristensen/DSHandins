@@ -1,6 +1,7 @@
 package main
 
 import (
+	"C"
 	"bufio"
 	"context"
 	"errors"
@@ -17,19 +18,25 @@ import (
 	"unicode/utf8"
 )
 
-type Client struct {
-	id         int
+/*type Client struct {
+	username   string
 	Timestamp  int
 	portNumber int
-	stream     ChittyChat_service.ChittyChat_ChatServiceServer
-}
+	stream     gRPC.ChittyChat_ChatServiceServer
+}*/
+
+// We found it easier to work with fields rather than structs as we don't have to send the entire client object around.
+var username string
+var time int32
+var portNumber int
+var stream gRPC.ChittyChat_ChatServiceServer
 
 var (
 	clientPort = flag.Int("cPort", 0, "client port number")
 	serverPort = flag.Int("sPort", 0, "server port number (should match the port used for the server)")
 )
 
-func connectToServer() (ChittyChat_service.ChittyChatClient, error) {
+func connectToServer() (gRPC.ChittyChatClient, error) {
 	// Dial the server at the specified port.
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(*serverPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -40,26 +47,47 @@ func connectToServer() (ChittyChat_service.ChittyChatClient, error) {
 	return ChittyChat_service.NewChittyChatClient(conn), nil
 }
 
-func ChatService(ctx context.Context, opts ...grpc.CallOption) (ChittyChat_ChatServiceClient, error) {
+func sendMessage(text string, stream gRPC.ChittyChat_ChatServiceClient) {
+	err := messageValidation(text)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	msg := gRPC.Message{
+		Username:  username,
+		Message:   text,
+		Timestamp: time,
+	}
+	err1 := stream.Send(&msg)
+	if err != nil {
+		fmt.Print("Could not send, error: ", err1)
+	}
 
 }
-func sendMessage() {
+
+func recieveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
+	for {
+		incoming, err := stream.Recv()
+		if err != nil {
+			log.Fatalf("Could not recieve message", err)
+			return
+		}
+
+		fmt.Printf("%s: %s\n", incoming.Username, incoming.Message)
+	}
 
 }
 
-func recieveMessage() {
-
-}
-func messageValidation(msg gRPC.Message) error {
-	if len(msg.Message) > 128 {
-		err := errors.New("!error! Your message is too long, the maximum is 128 characters")
+func messageValidation(msg string) (err error) {
+	if len(msg) > 128 {
+		err := errors.New("!ERROR! Your message is too long, the maximum is 128 characters")
 		return err
 	}
-	if !utf8.ValidString(msg.Message) {
-		err := errors.New("!error! Your message does not comply with UTF8 rules")
+	if !utf8.ValidString(msg) {
+		err := errors.New("!ERROR! Your message does not comply with UTF8 rules")
 		return err
 	}
-	return nil
+	return
 }
 
 func main() {
@@ -87,13 +115,17 @@ func main() {
 	defer conn.Close()
 
 	// Eventuelt brug connectToServer i stedet for følgende
-	client := ChittyChat_service.NewChittyChatClient(conn)
+	client := gRPC.NewChittyChatClient(conn)
 
 	stream, err := client.ChatService(context.Background())
 	if err != nil {
 		log.Fatalf("Could not connect to the ChittyChat service %v", err)
 	}
 
-	client := Client{}
+	fmt.Print("Choose your username: ")
+	fmt.Scanln(&username)
+	fmt.Printf("Username is: " + username)
+
+	sendMessage("Client: "+username+" has joined the ", stream)
 
 }
