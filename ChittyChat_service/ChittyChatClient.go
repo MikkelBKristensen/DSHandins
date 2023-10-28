@@ -50,8 +50,8 @@ func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 		time = max(recvMsg.Timestamp, time)
 
 		// write received message to log
-		log.Printf("Client %s, Received from %s: %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
-
+		logger.Printf("Client %s, Received from %s: %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
+		logger
 		// print in the client's terminal
 		fmt.Printf("%s: %s\n", recvMsg.Username, recvMsg.Message)
 	}
@@ -82,6 +82,8 @@ func main() {
 		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
+	logger := log.New(f, "", 0)
+	logger.SetOutput(f)
 
 	// Try to connect to the gRPC server
 	conn, err := grpc.Dial("localhost:5001", grpc.WithInsecure())
