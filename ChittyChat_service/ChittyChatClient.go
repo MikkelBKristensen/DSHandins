@@ -82,6 +82,7 @@ func main() {
 		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
+
 	logger := log.New(f, "", 0)
 	logger.SetOutput(f)
 
