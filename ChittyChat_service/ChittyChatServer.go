@@ -35,6 +35,7 @@ func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 			s.Usernames[stream] = clientMessage.GetUsername()
 			RegisteredClient = true
 		}
+		clientMessage.Timestamp = s.UpdateTime(clientMessage.Timestamp)
 		s.Broadcast(clientMessage)
 		//Check if Client already has a stream
 
@@ -70,6 +71,20 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 		}
 	}
 	//And log to log file.
+}
+
+// Should update the servers clock to be (time of a received message + 1)
+func (s *Server) UpdateTime(clientTimestamp int32) int32 {
+	s.Clock = max(clientTimestamp, s.Clock) + 1
+	return s.Clock
+}
+
+// Trying to use homemade max()
+func max(a, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func main() {

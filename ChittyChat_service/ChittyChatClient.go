@@ -14,16 +14,9 @@ import (
 	"unicode/utf8"
 )
 
-/*type Client struct {
-	username   string
-	Timestamp  int
-	portNumber string
-	stream     gRPC.ChittyChat_ChatServiceServer
-}*/
-
 // We found it easier to work with fields rather than structs as we don't have to send the entire client object around.
 var username string
-var time int32
+var time int32 = 1
 var portNumber string
 var stream gRPC.ChittyChat_ChatServiceServer
 
@@ -36,7 +29,7 @@ func sendMessage(text string, stream gRPC.ChittyChat_ChatServiceClient) {
 	msg := gRPC.Message{
 		Username:  username,
 		Message:   text,
-		Timestamp: 2,
+		Timestamp: time,
 	}
 	err1 := stream.Send(&msg)
 	if err != nil {
@@ -52,8 +45,15 @@ func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 			log.Fatalf("Could not receive message: %v", err)
 			return
 		}
-		//@TODO Implement time and iteration
-		fmt.Printf(recvMsg.Username + ": " + recvMsg.Message + "\n")
+
+		// set lamport time as the maximum received + 1
+		time = max(recvMsg.Timestamp, time)
+
+		// write received message to log
+		log.Printf("Client %s, Received from %s: %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
+
+		// print in the client's terminal
+		fmt.Printf("%s: %s\n", recvMsg.Username, recvMsg.Message)
 	}
 
 }
@@ -71,9 +71,17 @@ func messageValidation(msg string) (err error) {
 }
 
 func main() {
+	// Choose displayed username
 	fmt.Print("Choose your username: ")
 	fmt.Scanln(&username)
 	fmt.Printf("Username is: " + username + " \n")
+
+	// Set up the log
+	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
 
 	// Try to connect to the gRPC server
 	conn, err := grpc.Dial("localhost:5001", grpc.WithInsecure())
@@ -82,7 +90,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	//@TODO Eventuelt brug connectToServer i stedet for følgende
+	// Create client on server
 	client := gRPC.NewChittyChatClient(conn)
 
 	stream, err := client.ChatService(context.Background())
@@ -92,7 +100,7 @@ func main() {
 
 	//Sending intial join message to the stream
 	//@TODO Insert lamport time
-	sendMessage("Participant "+username+" joined ChittyChat @ [INSERT LAMPORT TIME] \n", stream)
+	sendMessage("Participant "+username+" joined ChittyChat", stream)
 
 	//Listening to messages on the stream
 	go receiveMessage(stream)
