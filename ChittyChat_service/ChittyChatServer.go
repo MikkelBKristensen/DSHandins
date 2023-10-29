@@ -56,7 +56,7 @@ func (s *Server) endStreamForClient(targetClient gRPC.ChittyChat_ChatServiceServ
 	var leaveMessage = gRPC.Message{
 		Username:  "Server",
 		Message:   "Client: " + username + " has left the chat. \n",
-		Timestamp: 1010,
+		Timestamp: s.Clock,
 	}
 	s.Broadcast(&leaveMessage)
 
@@ -66,25 +66,27 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 	//Should broadcast to all clients
 	for _, client := range s.ClientStreams {
 		if err := client.Send(msg); err != nil {
-			//@TODO Implement logging
-			//Log errormessage.
+
 		}
+		//s.UpdateTime(s.Clock)
 	}
-	//And log to log file.
+
 }
 
-// Should update the servers clock to be (time of a received message + 1)
+// UpdateTime Update server clock if msg timestamp is greater than servers time, otherwise dont update
 func (s *Server) UpdateTime(clientTimestamp int32) int32 {
-	s.Clock = max(clientTimestamp, s.Clock) + 1
+	if clientTimestamp > s.Clock {
+		s.Clock = clientTimestamp + 1
+	}
 	return s.Clock
 }
 
 // Trying to use homemade max()
-func max(a, b int32) int32 {
-	if a > b {
-		return a
+func max(clientTime, serverTime int32) int32 {
+	if clientTime > serverTime {
+		return clientTime
 	}
-	return b
+	return serverTime
 }
 
 func main() {

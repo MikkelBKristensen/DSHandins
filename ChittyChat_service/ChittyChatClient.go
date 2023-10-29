@@ -16,7 +16,7 @@ import (
 
 // We found it easier to work with fields rather than structs as we don't have to send the entire client object around.
 var username string
-var time int32 = 1
+var time int32 = 0
 var portNumber string
 var stream gRPC.ChittyChat_ChatServiceServer
 
@@ -50,8 +50,8 @@ func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 		time = max(recvMsg.Timestamp, time)
 
 		// write received message to log
-		logger.Printf("Client %s, Received from %s: %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
-		logger
+		log.Printf("Client %s, Received from %s: %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
+
 		// print in the client's terminal
 		fmt.Printf("%s: %s\n", recvMsg.Username, recvMsg.Message)
 	}
@@ -83,8 +83,7 @@ func main() {
 	}
 	defer f.Close()
 
-	logger := log.New(f, "", 0)
-	logger.SetOutput(f)
+	log.SetOutput(f)
 
 	// Try to connect to the gRPC server
 	conn, err := grpc.Dial("localhost:5001", grpc.WithInsecure())
