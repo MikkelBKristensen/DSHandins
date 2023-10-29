@@ -7,3 +7,27 @@
 2023/10/29 16:04:58 Now listening on port: 5001
 2023/10/29 16:05:02 [SERVER - OUTGOING] Mikkel has left the chat @ Lamport time %!(EXTRA int32=2)
 2023/10/29 16:05:02 [Client Mikkel Received from Mikkel] : Participant Mikkel joined the chat! @ lamport time 2
+2023/10/29 18:16:01 [SERVER - OUTGOING] Mikkel has left the chat @ Lamport time %!(EXTRA int32=4)
+2023/10/29 18:16:01 [Client Mikkel Received from Mikkel] : Hello @ lamport time 4
+2023/10/29 18:16:11 [SERVER - OUTGOING] Server has left the chat @ Lamport time %!(EXTRA int32=4)
+2023/10/29 18:20:32 Now listening on port: 5001
+2023/10/29 18:20:42 [SERVER - OUTGOING] Oliver has left the chat @ Lamport time 2
+2023/10/29 18:20:42 [Client Oliver Received from Oliver] : Participant Oliver joined the chat! @ lamport time 2
+2023/10/29 18:30:05 [SERVER - OUTGOING] Server has left the chat @ Lamport time 2
+2023/10/29 18:30:09 Now listening on port: 5001
+2023/10/29 18:30:14 [SERVER - OUTGOING] Server has left the chat @ Lamport time 2
+2023/10/29 18:30:14 [Client Jan Received from Server] : Participant Jan joined the chat! @ lamport time 2
+2023/10/29 18:31:56 [SERVER - OUTGOING] Jan has left the chat @ Lamport time 4
+2023/10/29 18:31:56 [Client Jan Received from Jan] : Hello everyone @ lamport time 4
+2023/10/29 18:32:50 [SERVER - OUTGOING] Jan has left the chat @ Lamport time 6
+2023/10/29 18:32:50 [Client Jan Received from Jan] : Hello @ lamport time 6
+2023/10/29 18:36:37 Could not receive message: rpc error: code = Unavailable desc = error reading from server: EOF
+2023/10/29 18:36:57 Now listening on port: 5001
+2023/10/29 18:38:27 [SERVER]: Now listening on port: 5001
+2023/10/29 18:38:48 [SERVER]: Server has left the chat @ Lamport time 2
+2023/10/29 18:38:48 [Client Bobby Received from Server] : Participant Bobby joined the chat! @ lamport time 2
+2023/10/29 18:39:47 [SERVER]: Server has left the chat @ Lamport time 2
+2023/10/29 18:39:47 [Client Bobby Received from Server] : Participant LoverBoy joined the chat! @ lamport time 2
+2023/10/29 18:39:47 [Client LoverBoy Received from Server] : Participant LoverBoy joined the chat! @ lamport time 2
+2023/10/29 18:40:35 [SERVER]: Server has left the chat @ Lamport time 2
+2023/10/29 18:40:35 [Client Bobby Received from Server] : Client: LoverBoy has left the chat. @ lamport time 2

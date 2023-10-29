@@ -52,7 +52,7 @@ func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 		}
 
 		// write received message to log
-		log.Printf("[Client %s Received from %s] : %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
+		log.Printf("[TO %s FROM %s] : %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
 
 		// print in the client's terminal
 		fmt.Printf("%s: %s\n", recvMsg.Username, recvMsg.Message)

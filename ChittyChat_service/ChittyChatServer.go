@@ -19,8 +19,6 @@ type Server struct {
 	Usernames                          map[gRPC.ChittyChat_ChatServiceServer]string
 }
 
-//@TODO ADD Clock functionality
-
 func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 	s.ClientStreams = append(s.ClientStreams, stream)
 	var RegisteredClient = false
@@ -36,6 +34,7 @@ func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 		if !RegisteredClient {
 			s.Usernames[stream] = clientMessage.GetUsername()
 			RegisteredClient = true
+			clientMessage.Username = "Server"
 		}
 		clientMessage.Timestamp = s.UpdateTime(clientMessage.Timestamp)
 		s.Broadcast(clientMessage)
@@ -64,12 +63,12 @@ func (s *Server) endStreamForClient(targetClient gRPC.ChittyChat_ChatServiceServ
 }
 
 func (s *Server) Broadcast(msg *gRPC.Message) {
-	log.Printf("[SERVER - OUTGOING] "+msg.Username+" has left the chat @ Lamport time ", s.Clock)
+	log.Printf("[SERVER]: %s has left the chat @ Lamport time %d", msg.Username, s.Clock)
 
 	//Should broadcast to all clients
 	for _, client := range s.ClientStreams {
 		if err := client.Send(msg); err != nil {
-			log.Printf("Could not broadcast message: %v", err)
+			log.Printf("[SERVER]: Could not broadcast message: %v", err)
 		}
 	}
 }
@@ -86,7 +85,7 @@ func main() {
 	// Set up the log
 	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("error opening file: %v", err)
+		log.Fatalf("[SERVER]: error opening file: %v", err)
 	}
 	defer f.Close()
 	log.SetOutput(f)
@@ -94,9 +93,9 @@ func main() {
 	// Create listener
 	listener, err := net.Listen("tcp", ":5001")
 	if err != nil {
-		log.Fatalf("Could not listen to port: 5001 %v \n", err)
+		log.Fatalf("[SERVER]: Could not listen to port: 5001 %v \n", err)
 	}
-	log.Println("Now listening on port: 5001")
+	log.Println("[SERVER]: Now listening on port: 5001")
 	fmt.Println("Now listening on port: 5001")
 
 	// Create new server
