@@ -16,7 +16,7 @@ import (
 
 // We found it easier to work with fields rather than structs as we don't have to send the entire client object around.
 var username string
-var time int32 = 0
+var time int32 = 1
 var portNumber string
 var stream gRPC.ChittyChat_ChatServiceServer
 
@@ -46,11 +46,13 @@ func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 			return
 		}
 
-		// set lamport time as the maximum received + 1
-		time = max(recvMsg.Timestamp, time)
+		// Update time
+		if recvMsg.Timestamp > time {
+			time = recvMsg.Timestamp + 1
+		}
 
 		// write received message to log
-		log.Printf("Client %s, Received from %s: %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
+		log.Printf("[Client %s Received from %s] : %s @ lamport time %d", username, recvMsg.Username, recvMsg.Message, recvMsg.GetTimestamp())
 
 		// print in the client's terminal
 		fmt.Printf("%s: %s\n", recvMsg.Username, recvMsg.Message)
@@ -82,7 +84,6 @@ func main() {
 		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
-
 	log.SetOutput(f)
 
 	// Try to connect to the gRPC server
@@ -101,8 +102,7 @@ func main() {
 	}
 
 	//Sending intial join message to the stream
-	//@TODO Insert lamport time
-	sendMessage("Participant "+username+" joined ChittyChat", stream)
+	sendMessage("Participant "+username+" joined the chat!", stream)
 
 	//Listening to messages on the stream
 	go receiveMessage(stream)
