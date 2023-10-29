@@ -31,14 +31,18 @@ func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 			return err
 		}
 
+		//Check if Client already has a stream
 		if !RegisteredClient {
 			s.Usernames[stream] = clientMessage.GetUsername()
 			RegisteredClient = true
 			clientMessage.Username = "Server"
 		}
-		clientMessage.Timestamp = s.UpdateTime(clientMessage.Timestamp)
+		s.Clock = s.UpdateTime(clientMessage.Timestamp)
+		if clientMessage.Timestamp < s.Clock {
+			clientMessage.Timestamp = s.Clock
+		}
 		s.Broadcast(clientMessage)
-		//Check if Client already has a stream
+
 	}
 }
 
@@ -55,16 +59,14 @@ func (s *Server) endStreamForClient(targetClient gRPC.ChittyChat_ChatServiceServ
 
 	var leaveMessage = gRPC.Message{
 		Username:  "Server",
-		Message:   "Client: " + username + " has left the chat.",
+		Message:   username + " has left the chat.",
 		Timestamp: s.Clock,
 	}
 	s.Broadcast(&leaveMessage)
-
+	log.Printf("[SERVER]: %s has left the chat @ Lamport time %d", username, s.Clock)
 }
 
 func (s *Server) Broadcast(msg *gRPC.Message) {
-	log.Printf("[SERVER]: %s has left the chat @ Lamport time %d", msg.Username, s.Clock)
-
 	//Should broadcast to all clients
 	for _, client := range s.ClientStreams {
 		if err := client.Send(msg); err != nil {
@@ -73,9 +75,9 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 	}
 }
 
-// UpdateTime Update server clock if msg timestamp is greater than servers time, otherwise dont update
+// UpdateTime Update server clock if msg timestamp is greater than servers time, otherwise don't update
 func (s *Server) UpdateTime(clientTimestamp int32) int32 {
-	if clientTimestamp > s.Clock {
+	if clientTimestamp >= s.Clock {
 		s.Clock = clientTimestamp + 1
 	}
 	return s.Clock
@@ -104,6 +106,7 @@ func main() {
 	// Register ChatService
 	service := &Server{
 		Usernames: make(map[gRPC.ChittyChat_ChatServiceServer]string),
+		Clock:     1,
 	}
 
 	gRPC.RegisterChittyChatServer(grpcServer, service)

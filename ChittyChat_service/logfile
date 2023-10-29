@@ -1,33 +1,23 @@
-2023/10/29 15:59:55 [SERVER - OUTGOING] Username:"Server"  Message:"Client: Mikkel has left the chat. \n"
-2023/10/29 16:00:01 Now listening on port: 5001
-2023/10/29 16:01:59 Now listening on port: 5001
-2023/10/29 16:02:05 [SERVER - OUTGOING] Mikkel has left the chat.
-2023/10/29 16:02:05 [Client Mikkel Received from Mikkel] : Participant Mikkel joined the chat! @ lamport time 0
-2023/10/29 16:04:55 [SERVER - OUTGOING] Server has left the chat.
-2023/10/29 16:04:58 Now listening on port: 5001
-2023/10/29 16:05:02 [SERVER - OUTGOING] Mikkel has left the chat @ Lamport time %!(EXTRA int32=2)
-2023/10/29 16:05:02 [Client Mikkel Received from Mikkel] : Participant Mikkel joined the chat! @ lamport time 2
-2023/10/29 18:16:01 [SERVER - OUTGOING] Mikkel has left the chat @ Lamport time %!(EXTRA int32=4)
-2023/10/29 18:16:01 [Client Mikkel Received from Mikkel] : Hello @ lamport time 4
-2023/10/29 18:16:11 [SERVER - OUTGOING] Server has left the chat @ Lamport time %!(EXTRA int32=4)
-2023/10/29 18:20:32 Now listening on port: 5001
-2023/10/29 18:20:42 [SERVER - OUTGOING] Oliver has left the chat @ Lamport time 2
-2023/10/29 18:20:42 [Client Oliver Received from Oliver] : Participant Oliver joined the chat! @ lamport time 2
-2023/10/29 18:30:05 [SERVER - OUTGOING] Server has left the chat @ Lamport time 2
-2023/10/29 18:30:09 Now listening on port: 5001
-2023/10/29 18:30:14 [SERVER - OUTGOING] Server has left the chat @ Lamport time 2
-2023/10/29 18:30:14 [Client Jan Received from Server] : Participant Jan joined the chat! @ lamport time 2
-2023/10/29 18:31:56 [SERVER - OUTGOING] Jan has left the chat @ Lamport time 4
-2023/10/29 18:31:56 [Client Jan Received from Jan] : Hello everyone @ lamport time 4
-2023/10/29 18:32:50 [SERVER - OUTGOING] Jan has left the chat @ Lamport time 6
-2023/10/29 18:32:50 [Client Jan Received from Jan] : Hello @ lamport time 6
-2023/10/29 18:36:37 Could not receive message: rpc error: code = Unavailable desc = error reading from server: EOF
-2023/10/29 18:36:57 Now listening on port: 5001
-2023/10/29 18:38:27 [SERVER]: Now listening on port: 5001
-2023/10/29 18:38:48 [SERVER]: Server has left the chat @ Lamport time 2
-2023/10/29 18:38:48 [Client Bobby Received from Server] : Participant Bobby joined the chat! @ lamport time 2
-2023/10/29 18:39:47 [SERVER]: Server has left the chat @ Lamport time 2
-2023/10/29 18:39:47 [Client Bobby Received from Server] : Participant LoverBoy joined the chat! @ lamport time 2
-2023/10/29 18:39:47 [Client LoverBoy Received from Server] : Participant LoverBoy joined the chat! @ lamport time 2
-2023/10/29 18:40:35 [SERVER]: Server has left the chat @ Lamport time 2
-2023/10/29 18:40:35 [Client Bobby Received from Server] : Client: LoverBoy has left the chat. @ lamport time 2
+
+2023/10/29 19:55:47 [SERVER]: Now listening on port: 5001
+2023/10/29 19:56:00 [TO Bobby, FROM Bobby] : Partipant Bobby joined the chat @ lamport time 0
+2023/10/29 19:56:05 [TO Bobby, FROM Janni] : Partipant Janni joined the chat @ lamport time 0
+2023/10/29 19:56:05 [TO Janni, FROM Janni] : Partipant Janni joined the chat @ lamport time 0
+2023/10/29 19:56:13 [TO Janni, FROM Bobby] : Hej @ lamport time 0
+2023/10/29 19:56:13 [TO Bobby, FROM Bobby] : Hej @ lamport time 0
+2023/10/29 19:56:32 [TO Janni, FROM Janni] : Hej med dig @ lamport time 0
+2023/10/29 19:56:32 [TO Bobby, FROM Janni] : Hej med dig @ lamport time 0
+2023/10/29 19:56:38 [SERVER]: Janni has left the chat @ Lamport time 0
+2023/10/29 19:56:38 [TO Bobby, FROM Server] : Janni has left the chat. @ lamport time 0
+2023/10/29 19:56:42 [SERVER]: Bobby has left the chat @ Lamport time 0
+2023/10/29 20:00:01 [SERVER]: Now listening on port: 5001
+2023/10/29 20:00:09 [TO Jonny, FROM Jonny] : Partipant Jonny joined the chat @ lamport time 1
+2023/10/29 20:00:14 [TO Jonny, FROM Bob] : Partipant Bob joined the chat @ lamport time 1
+2023/10/29 20:00:14 [TO Bob, FROM Bob] : Partipant Bob joined the chat @ lamport time 1
+2023/10/29 20:00:22 [TO Bob, FROM Bob] : Hej @ lamport time 3
+2023/10/29 20:00:22 [TO Jonny, FROM Bob] : Hej @ lamport time 3
+2023/10/29 20:00:26 [TO Jonny, FROM Jonny] : Goddag Hr @ lamport time 5
+2023/10/29 20:00:26 [TO Bob, FROM Jonny] : Goddag Hr @ lamport time 5
+2023/10/29 20:00:32 [SERVER]: Jonny has left the chat @ Lamport time 5
+2023/10/29 20:00:32 [TO Bob, FROM Server] : Jonny has left the chat. @ lamport time 5
+2023/10/29 20:00:34 [SERVER]: Bob has left the chat @ Lamport time 5
