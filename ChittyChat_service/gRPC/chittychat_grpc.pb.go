@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v4.24.3
-// source: gRPC/chittychat.proto
+// source: grpc/chittychat.proto
 
 package gRPC
 
@@ -133,5 +133,5 @@ var ChittyChat_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "gRPC/chittychat.proto",
+	Metadata: "grpc/chittychat.proto",
 }

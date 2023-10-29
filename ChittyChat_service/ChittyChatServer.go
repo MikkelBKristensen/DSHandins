@@ -21,7 +21,9 @@ type Server struct {
 
 func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 	s.ClientStreams = append(s.ClientStreams, stream)
+
 	var RegisteredClient = false
+
 	//The server should keep receiving messages and broadcasting them:
 	for {
 
@@ -37,13 +39,22 @@ func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 			RegisteredClient = true
 			clientMessage.Username = "Server"
 		}
-		s.Clock = s.UpdateTime(clientMessage.Timestamp)
+
+		// If the received timestamp is less than the servers clock,
+		// then set the clients clock equal to the servers clock to maintain order
 		if clientMessage.Timestamp < s.Clock {
 			clientMessage.Timestamp = s.Clock
 		}
-		s.Broadcast(clientMessage)
 
+		// Increment server clock
+		s.Clock = max(clientMessage.Timestamp, s.Clock) + 1
+
+		s.Broadcast(clientMessage)
 	}
+}
+
+func (s *Server) RegisterUsername(stream gRPC.ChittyChat_ChatServiceServer, username string) string {
+	return username
 }
 
 func (s *Server) endStreamForClient(targetClient gRPC.ChittyChat_ChatServiceServer) {
@@ -63,7 +74,7 @@ func (s *Server) endStreamForClient(targetClient gRPC.ChittyChat_ChatServiceServ
 		Timestamp: s.Clock,
 	}
 	s.Broadcast(&leaveMessage)
-	log.Printf("[SERVER]: %s has left the chat @ Lamport time %d", username, s.Clock)
+	//log.Printf("[SERVER]: %s has left the chat @ Lamport time %d", username, s.Clock)
 }
 
 func (s *Server) Broadcast(msg *gRPC.Message) {
@@ -75,12 +86,14 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 	}
 }
 
-// UpdateTime Update server clock if msg timestamp is greater than servers time, otherwise don't update
-func (s *Server) UpdateTime(clientTimestamp int32) int32 {
-	if clientTimestamp >= s.Clock {
-		s.Clock = clientTimestamp + 1
+// Join message
+func (s *Server) GetJoinMessage(username string) gRPC.Message {
+	var message = gRPC.Message{
+		Username:  "Server",
+		Message:   "Participant " + username + " joined the chat!",
+		Timestamp: s.Clock,
 	}
-	return s.Clock
+	return message
 }
 
 func main() {
@@ -106,7 +119,7 @@ func main() {
 	// Register ChatService
 	service := &Server{
 		Usernames: make(map[gRPC.ChittyChat_ChatServiceServer]string),
-		Clock:     1,
+		Clock:     0,
 	}
 
 	gRPC.RegisterChittyChatServer(grpcServer, service)

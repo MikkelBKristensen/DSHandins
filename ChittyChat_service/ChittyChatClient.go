@@ -21,10 +21,14 @@ var portNumber string
 var stream gRPC.ChittyChat_ChatServiceServer
 
 func sendMessage(text string, stream gRPC.ChittyChat_ChatServiceClient) {
+
 	err := messageValidation(text)
 	if err != nil {
 		fmt.Print(err)
 	}
+
+	// increment time
+	time++
 
 	msg := gRPC.Message{
 		Username:  username,
@@ -52,10 +56,8 @@ func receiveMessage(stream gRPC.ChittyChat_ChatServiceClient) {
 		// print in the client's terminal
 		fmt.Printf("%s: %s\n", recvMsg.Username, recvMsg.Message)
 
-		// Update time
-		if recvMsg.Timestamp > time {
-			time = recvMsg.Timestamp + 1
-		}
+		// increment time
+		time = max(recvMsg.Timestamp, time) + 1
 	}
 
 }
@@ -101,7 +103,7 @@ func main() {
 		log.Fatalf("Could not connect to the ChittyChat service %v", err)
 	}
 
-	//Sending intial join message to the stream
+	//Sending initial join message to the stream
 	joinString := fmt.Sprintf("Partipant %s joined the chat", username)
 	sendMessage(joinString, stream)
 
