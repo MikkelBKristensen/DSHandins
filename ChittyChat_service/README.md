@@ -5,7 +5,7 @@ ChittyChat is a real-time chat service built using gRPC, allowing users to commu
 
 ### To get started with ChittyChat, follow these steps:
 
-Clone the repository: git clone https://github.com/MikkelBKristensen/DSHandins/ChittyChat_service.git
+Clone the repository: git clone https://github.com/MikkelBKristensen/DSHandins.git
 Install the necessary dependencies.
 Run the server application.
 Launch the client application to start chatting.
