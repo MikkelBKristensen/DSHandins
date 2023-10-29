@@ -108,6 +108,7 @@ func main() {
 	//Listening to messages on the stream
 	go receiveMessage(stream)
 
+	// Lets client write messages in terminal
 	messageReader := bufio.NewReader(os.Stdin)
 	for {
 		text, _ := messageReader.ReadString('\n')

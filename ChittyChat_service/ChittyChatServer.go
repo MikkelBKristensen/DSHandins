@@ -22,6 +22,7 @@ type Server struct {
 func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 	s.ClientStreams = append(s.ClientStreams, stream)
 	var RegisteredClient = false
+
 	//The server should keep receiving messages and broadcasting them:
 	for {
 
