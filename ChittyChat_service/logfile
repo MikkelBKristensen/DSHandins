@@ -1,0 +1,20 @@
+2023/10/30 14:00:06 [SERVER]: Now listening on port: 5001
+2023/10/30 14:00:26 [TO MiniatureAlf, FROM Server] : Partipant MiniatureAlf joined the chat @ lamport time 2
+2023/10/30 14:00:39 [TO MiniatureAlf, FROM Server] : Partipant MagnetiskMus joined the chat @ lamport time 3
+2023/10/30 14:00:39 [TO MagnetiskMus, FROM Server] : Partipant MagnetiskMus joined the chat @ lamport time 3
+2023/10/30 14:00:46 [TO MiniatureAlf, FROM Server] : Partipant Bob joined the chat @ lamport time 4
+2023/10/30 14:00:46 [TO MagnetiskMus, FROM Server] : Partipant Bob joined the chat @ lamport time 4
+2023/10/30 14:00:46 [TO Bob, FROM Server] : Partipant Bob joined the chat @ lamport time 4
+2023/10/30 14:01:02 [TO Bob, FROM MiniatureAlf] : Har I tjekket jeres omnitrons? Der er problemer på vestkysten igen @ lamport time 6
+2023/10/30 14:01:02 [TO MiniatureAlf, FROM MiniatureAlf] : Har I tjekket jeres omnitrons? Der er problemer på vestkysten igen @ lamport time 6
+2023/10/30 14:01:02 [TO MagnetiskMus, FROM MiniatureAlf] : Har I tjekket jeres omnitrons? Der er problemer på vestkysten igen @ lamport time 6
+2023/10/30 14:01:19 [TO MagnetiskMus, FROM MagnetiskMus] : Jeg så det godt lige, Power Rangers AFSTED! @ lamport time 8
+2023/10/30 14:01:19 [TO MiniatureAlf, FROM MagnetiskMus] : Jeg så det godt lige, Power Rangers AFSTED! @ lamport time 8
+2023/10/30 14:01:19 [TO Bob, FROM MagnetiskMus] : Jeg så det godt lige, Power Rangers AFSTED! @ lamport time 8
+2023/10/30 14:01:24 [SERVER]: MagnetiskMus has left the chat @ Lamport time 9
+2023/10/30 14:01:24 [TO MiniatureAlf, FROM Server] : MagnetiskMus has left the chat. @ lamport time 9
+2023/10/30 14:01:24 [TO Bob, FROM Server] : MagnetiskMus has left the chat. @ lamport time 9
+2023/10/30 14:01:28 [SERVER]: MiniatureAlf has left the chat @ Lamport time 9
+2023/10/30 14:01:28 [TO Bob, FROM Server] : MiniatureAlf has left the chat. @ lamport time 9
+2023/10/30 14:01:37 [TO Bob, FROM Bob] : Hestenettet er ikke hvad det plejede at være @ lamport time 12
+2023/10/30 14:01:39 [SERVER]: Bob has left the chat @ Lamport time 13
