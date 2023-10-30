@@ -92,6 +92,7 @@ func main() {
 	fmt.Printf("Username is: " + username + " \n")
 
 	// Set up the log
+	// Source: https://stackoverflow.com/questions/19965795/how-to-write-log-to-file
 	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
