@@ -19,14 +19,18 @@ type Server struct {
 	Usernames                          map[gRPC.ChittyChat_ChatServiceServer]string
 }
 
+// ChatService is the function that will be called when a client connects to the server,
+// and will be used to handle the connection.
 func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
+
+	// Add the stream to the list of streams
 	s.ClientStreams = append(s.ClientStreams, stream)
 
 	var RegisteredClient = false
 
 	//The server should keep receiving messages and broadcasting them:
 	for {
-
+		// Receive message from client
 		clientMessage, err := stream.Recv()
 		if err != nil {
 			s.endStreamForClient(stream)
@@ -53,10 +57,7 @@ func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 	}
 }
 
-func (s *Server) RegisterUsername(stream gRPC.ChittyChat_ChatServiceServer, username string) string {
-	return username
-}
-
+// endStreamForClient is a function that will be called when a client disconnects from the server.
 func (s *Server) endStreamForClient(targetClient gRPC.ChittyChat_ChatServiceServer) {
 	//Locate  the specific stream that needs to be closed:
 	for i, client := range s.ClientStreams {
@@ -66,17 +67,22 @@ func (s *Server) endStreamForClient(targetClient gRPC.ChittyChat_ChatServiceServ
 		}
 	}
 
+	//Get the username of the client that left
 	username := s.Usernames[targetClient]
 
+	//Create leave message
 	var leaveMessage = gRPC.Message{
 		Username:  "Server",
 		Message:   username + " has left the chat.",
 		Timestamp: s.Clock,
 	}
+
+	//Broadcast leave message and print to log
 	s.Broadcast(&leaveMessage)
-	//log.Printf("[SERVER]: %s has left the chat @ Lamport time %d", username, s.Clock)
+	log.Printf("[SERVER]: %s has left the chat @ Lamport time %d", username, s.Clock)
 }
 
+// Broadcast message
 func (s *Server) Broadcast(msg *gRPC.Message) {
 	//Should broadcast to all clients
 	for _, client := range s.ClientStreams {
@@ -84,16 +90,6 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 			log.Printf("[SERVER]: Could not broadcast message: %v", err)
 		}
 	}
-}
-
-// Join message
-func (s *Server) GetJoinMessage(username string) gRPC.Message {
-	var message = gRPC.Message{
-		Username:  "Server",
-		Message:   "Participant " + username + " joined the chat!",
-		Timestamp: s.Clock,
-	}
-	return message
 }
 
 func main() {
@@ -124,5 +120,6 @@ func main() {
 
 	gRPC.RegisterChittyChatServer(grpcServer, service)
 
+	// Start server
 	grpcServer.Serve(listener)
 }
