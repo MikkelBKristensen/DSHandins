@@ -33,6 +33,11 @@ func (s *Server) ChatService(stream gRPC.ChittyChat_ChatServiceServer) error {
 		// Receive message from client
 		clientMessage, err := stream.Recv()
 		if err != nil {
+			
+			//Increment server clock since the client disconnected
+			s.Clock++
+
+			// If the client disconnects, then end the stream for that client
 			s.endStreamForClient(stream)
 			return err
 		}
