@@ -116,7 +116,7 @@ func main() {
 	}
 
 	//Sending initial join message to the stream
-	joinString := fmt.Sprintf("Partipant %s joined the chat", username)
+	joinString := fmt.Sprintf("Participant %s joined the chat", username)
 	sendMessage(joinString, stream)
 
 	//Listening to messages on the stream

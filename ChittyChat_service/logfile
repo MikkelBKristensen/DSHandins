@@ -1,10 +1,10 @@
 2023/10/30 14:00:06 [SERVER]: Now listening on port: 5001
-2023/10/30 14:00:26 [TO MiniatureAlf, FROM Server] : Partipant MiniatureAlf joined the chat @ lamport time 2
-2023/10/30 14:00:39 [TO MiniatureAlf, FROM Server] : Partipant MagnetiskMus joined the chat @ lamport time 3
-2023/10/30 14:00:39 [TO MagnetiskMus, FROM Server] : Partipant MagnetiskMus joined the chat @ lamport time 3
-2023/10/30 14:00:46 [TO MiniatureAlf, FROM Server] : Partipant Bob joined the chat @ lamport time 4
-2023/10/30 14:00:46 [TO MagnetiskMus, FROM Server] : Partipant Bob joined the chat @ lamport time 4
-2023/10/30 14:00:46 [TO Bob, FROM Server] : Partipant Bob joined the chat @ lamport time 4
+2023/10/30 14:00:26 [TO MiniatureAlf, FROM Server] : Participant MiniatureAlf joined the chat @ lamport time 2
+2023/10/30 14:00:39 [TO MiniatureAlf, FROM Server] : Participant MagnetiskMus joined the chat @ lamport time 3
+2023/10/30 14:00:39 [TO MagnetiskMus, FROM Server] : Participant MagnetiskMus joined the chat @ lamport time 3
+2023/10/30 14:00:46 [TO MiniatureAlf, FROM Server] : Participant Bob joined the chat @ lamport time 4
+2023/10/30 14:00:46 [TO MagnetiskMus, FROM Server] : Participant Bob joined the chat @ lamport time 4
+2023/10/30 14:00:46 [TO Bob, FROM Server] : Participant Bob joined the chat @ lamport time 4
 2023/10/30 14:01:02 [TO Bob, FROM MiniatureAlf] : Har I tjekket jeres omnitrons? Der er problemer på vestkysten igen @ lamport time 6
 2023/10/30 14:01:02 [TO MiniatureAlf, FROM MiniatureAlf] : Har I tjekket jeres omnitrons? Der er problemer på vestkysten igen @ lamport time 6
 2023/10/30 14:01:02 [TO MagnetiskMus, FROM MiniatureAlf] : Har I tjekket jeres omnitrons? Der er problemer på vestkysten igen @ lamport time 6
