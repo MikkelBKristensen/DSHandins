@@ -16,7 +16,7 @@ import (
 
 // We found it easier to work with fields rather than structs as we don't have to send the entire client object around.
 var username string
-var time int32 = 0
+var time int32 = 1
 var portNumber string
 var stream gRPC.ChittyChat_ChatServiceServer
 

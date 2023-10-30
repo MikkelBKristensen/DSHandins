@@ -115,7 +115,7 @@ func main() {
 	// Register ChatService
 	service := &Server{
 		Usernames: make(map[gRPC.ChittyChat_ChatServiceServer]string),
-		Clock:     0,
+		Clock:     1,
 	}
 
 	gRPC.RegisterChittyChatServer(grpcServer, service)
