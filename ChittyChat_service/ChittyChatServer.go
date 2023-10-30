@@ -98,6 +98,7 @@ func (s *Server) Broadcast(msg *gRPC.Message) {
 
 func main() {
 	// Set up the log
+	// Source: https://stackoverflow.com/questions/19965795/how-to-write-log-to-file
 	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("[SERVER]: error opening file: %v", err)
