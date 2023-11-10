@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/Main/ChittyChat_service/gRPC";
+option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/Handin4/ChittyChat_service/gRPC";
 
 package gRPC;
 
