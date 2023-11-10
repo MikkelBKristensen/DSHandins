@@ -17,7 +17,7 @@ type Peer struct {
 	peerList          []string
 }
 
-func (s *Peer) sendConnectionStatus(isJoin bool) {
+func (s *Peer) sendConnectionStatus(status bool) {
 	//Status: 0 for leaving and 1 for joining
 	// Update peerList to be equal the PeerPorts file
 	// and append own port to the file
@@ -26,11 +26,11 @@ func (s *Peer) sendConnectionStatus(isJoin bool) {
 
 	message := MeService.ConnectionMsg{
 		Port:   s.port,
-		isJoin: isJoin,
+		isJoin: status,
 	}
 
 	for i := 0; i < len(s.peerList); i++ {
-		s2 := s.peerList[i]
+		_ = s.peerList[i]
 		//Send to all peers
 	}
 }
@@ -40,7 +40,8 @@ func (s *Peer) receiveJoin(join *MeService.ConnectionMsg) {
 	if join.IsJoin == true {
 		append(s.peerList, join.GetPort())
 	} else {
-		//Make
+		//Make it delete the port from the list
+
 	}
 
 }
