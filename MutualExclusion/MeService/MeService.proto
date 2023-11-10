@@ -5,8 +5,8 @@ option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/Main/MutualExcl
 package MeService;
 
 service MeService {
-  rpc Join (JoinMessage) returns (JoinMessage);
-  rpc Leave(JoinMessage) returns (JoinMessage);
+  rpc Join (ConnectionMsg) returns (Empty);
+  rpc Leave(ConnectionMsg) returns (Empty);
   rpc RequestEntry (Request) returns (Response);
 }
 
@@ -22,8 +22,9 @@ message Response {
 }
 
 
-message JoinMessage {
+message ConnectionMsg {
   string port = 1;
+  bool isJoin = 2;
 }
 
 message Empty {}

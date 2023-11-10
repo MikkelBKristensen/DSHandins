@@ -4,6 +4,7 @@ import (
 	"bufio"
 	MeService "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
 	_ "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
+	"google.golang.org/grpc"
 	"log"
 	"os"
 )
@@ -16,11 +17,16 @@ type Peer struct {
 	peerList          []string
 }
 
-func (s *Peer) sendJoin(join *MeService.JoinMessage) {
+func (s *Peer) sendConnectionStatus(isJoin bool) {
+	//Status: 0 for leaving and 1 for joining
+	// Update peerList to be equal the PeerPorts file
+	// and append own port to the file
 	s.peerList, _ = readFile()
+	s.updateFile()
 
-	message := MeService.JoinMessage{
-		Port: s.port,
+	message := MeService.ConnectionMsg{
+		Port:   s.port,
+		isJoin: isJoin,
 	}
 
 	for i := 0; i < len(s.peerList); i++ {
@@ -29,8 +35,19 @@ func (s *Peer) sendJoin(join *MeService.JoinMessage) {
 	}
 }
 
-func (s *Peer) receiveJoin(join *MeService.JoinMessage) {
-	append(s.peerList, join.GetPort())
+func (s *Peer) receiveJoin(join *MeService.ConnectionMsg) {
+	// TODO Update clock
+	if join.IsJoin == true {
+		append(s.peerList, join.GetPort())
+	} else {
+		//Make
+	}
+
+}
+
+func (s *Peer) leave() {
+	s.deleteFromFile()
+	panic("Not implemented yet")
 }
 
 func readFile() ([]string, error) {
@@ -60,6 +77,7 @@ func readFile() ([]string, error) {
 
 	return peerPortArray, nil
 }
+
 func (s *Peer) updateFile() {
 	// Set filename
 	fileName := "PeerPorts.txt"
@@ -72,10 +90,21 @@ func (s *Peer) updateFile() {
 	defer peerPortFile.Close()
 
 	// Append port to the file
-	if _, err := peerPortFile.WriteString(s.port + "\n") {
-
+	if _, err := peerPortFile.WriteString(s.port + "\n"); err != nil {
+		log.Fatalf("Could not add Port: %s to file", s.port)
 	}
+}
 
+func (s *Peer) deleteFromFile() {
+	panic("Not implemented yet")
+}
+
+func (s *Peer) connect(port string) grpc.ClientConn {
+	panic("Not Implemented yet")
+}
+
+func (s *Peer) sendMessage(msg MeService.ConnectionMsg) {
+	panic("Not implemented yet")
 }
 
 func main() {

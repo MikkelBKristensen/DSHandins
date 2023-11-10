@@ -22,8 +22,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MeServiceClient interface {
-	Join(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*JoinMessage, error)
-	Leave(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*JoinMessage, error)
+	Join(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error)
+	Leave(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error)
 	RequestEntry(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
 }
 
@@ -35,8 +35,8 @@ func NewMeServiceClient(cc grpc.ClientConnInterface) MeServiceClient {
 	return &meServiceClient{cc}
 }
 
-func (c *meServiceClient) Join(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*JoinMessage, error) {
-	out := new(JoinMessage)
+func (c *meServiceClient) Join(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/MeService.MeService/Join", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -44,8 +44,8 @@ func (c *meServiceClient) Join(ctx context.Context, in *JoinMessage, opts ...grp
 	return out, nil
 }
 
-func (c *meServiceClient) Leave(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*JoinMessage, error) {
-	out := new(JoinMessage)
+func (c *meServiceClient) Leave(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/MeService.MeService/Leave", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -66,8 +66,8 @@ func (c *meServiceClient) RequestEntry(ctx context.Context, in *Request, opts ..
 // All implementations must embed UnimplementedMeServiceServer
 // for forward compatibility
 type MeServiceServer interface {
-	Join(context.Context, *JoinMessage) (*JoinMessage, error)
-	Leave(context.Context, *JoinMessage) (*JoinMessage, error)
+	Join(context.Context, *ConnectionMsg) (*Empty, error)
+	Leave(context.Context, *ConnectionMsg) (*Empty, error)
 	RequestEntry(context.Context, *Request) (*Response, error)
 	mustEmbedUnimplementedMeServiceServer()
 }
@@ -76,10 +76,10 @@ type MeServiceServer interface {
 type UnimplementedMeServiceServer struct {
 }
 
-func (UnimplementedMeServiceServer) Join(context.Context, *JoinMessage) (*JoinMessage, error) {
+func (UnimplementedMeServiceServer) Join(context.Context, *ConnectionMsg) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
 }
-func (UnimplementedMeServiceServer) Leave(context.Context, *JoinMessage) (*JoinMessage, error) {
+func (UnimplementedMeServiceServer) Leave(context.Context, *ConnectionMsg) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Leave not implemented")
 }
 func (UnimplementedMeServiceServer) RequestEntry(context.Context, *Request) (*Response, error) {
@@ -99,7 +99,7 @@ func RegisterMeServiceServer(s grpc.ServiceRegistrar, srv MeServiceServer) {
 }
 
 func _MeService_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JoinMessage)
+	in := new(ConnectionMsg)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -111,13 +111,13 @@ func _MeService_Join_Handler(srv interface{}, ctx context.Context, dec func(inte
 		FullMethod: "/MeService.MeService/Join",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MeServiceServer).Join(ctx, req.(*JoinMessage))
+		return srv.(MeServiceServer).Join(ctx, req.(*ConnectionMsg))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MeService_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JoinMessage)
+	in := new(ConnectionMsg)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func _MeService_Leave_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: "/MeService.MeService/Leave",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MeServiceServer).Leave(ctx, req.(*JoinMessage))
+		return srv.(MeServiceServer).Leave(ctx, req.(*ConnectionMsg))
 	}
 	return interceptor(ctx, in, info, handler)
 }
