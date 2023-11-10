@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
+	MeService "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
+	_ "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -13,7 +14,7 @@ import (
 
 type mutualExclusionServer struct {
 	mu                sync.Mutex
-	lamportClock      int32
+	lamportClock      int64
 	inCriticalSection bool
 	pendingRequests   map[string]int64
 }
