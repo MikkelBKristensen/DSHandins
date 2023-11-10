@@ -1,6 +1,12 @@
 syntax = "proto3";
 
-service MEService {
+option go_package = "./";
+
+package MeService;
+
+service MeService {
+  rpc Join (JoinMessage) returns (JoinMessage);
+  rpc Leave(JoinMessage) returns (JoinMessage);
   rpc RequestEntry (Request) returns (Response);
   rpc ReleaseEntry (Release) returns (Empty);
 }
@@ -19,6 +25,10 @@ message Response {
 message Release {
   int64 timestamp = 1;
   string nodeId = 2;
+}
+message JoinMessage {
+  string address = 1;
+  int64 port = 2;
 }
 
 message Empty {}

@@ -1,4 +1,4 @@
-module github.com/MikkelBKristensen/DSHandins/ChittyChat_service
+module github.com/MikkelBKristensen/DSHandins/go get -u google.golang.org/grpcChittyChat_service
 
 go 1.21.0
 
