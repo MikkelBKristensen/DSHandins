@@ -1,115 +1,83 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"bufio"
 	MeService "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
 	_ "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
-	"google.golang.org/grpc"
 	"log"
-	"net"
-	"sync"
-	"time"
+	"os"
 )
 
-type mutualExclusionServer struct {
-	mu                sync.Mutex
-	lamportClock      int64
+type Peer struct {
+	lamportClock      int32
+	port              string
 	inCriticalSection bool
-	pendingRequests   map[string]int64
+	pendingRequests   []MeService.Request
+	peerList          []string
 }
 
-func (s *mutualExclusionServer) RequestEntry(ctx context.Context, req *MeService.Request) (MeService.Response, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *Peer) sendJoin(join *MeService.JoinMessage) {
+	s.peerList, _ = readFile()
 
-	// Update Lamport clock
-	s.lamportClock++
-	localTimestamp := s.lamportClock
-
-	// If the local node is not in the critical section or has a lower timestamp, grant permission
-	if !s.inCriticalSection || req.Timestamp < localTimestamp {
-		// Grant permission
-		response := &MeService.Response{
-			Permission: true,
-			Timestamp:  localTimestamp,
-			NodeId:     "local", // You can replace this with the actual node ID
-		}
-		return response, nil
+	message := MeService.JoinMessage{
+		Port: s.port,
 	}
 
-	// Otherwise, queue the request
-	s.pendingRequests[req.NodeId] = req.Timestamp
-
-	// Deny permission for now
-	response := &MeService.Response{
-		Permission: false,
-		Timestamp:  localTimestamp,
-		NodeId:     "local", // You can replace this with the actual node ID
+	for i := 0; i < len(s.peerList); i++ {
+		s2 := s.peerList[i]
+		//Send to all peers
 	}
-	return response, nil
 }
 
-func (s *mutualExclusionServer) ReleaseEntry(ctx context.Context, req *MeService.Release) (*MeService.Empty, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Update Lamport clock
-	s.lamportClock++
-
-	// Remove the released node from the pending requests queue
-	delete(s.pendingRequests, req.NodeId)
-
-	// Check if the pending requests can now be granted
-	for node, timestamp := range s.pendingRequests {
-		if timestamp <= s.lamportClock {
-			// Grant permission to the next node in the queue
-			response := &MeService.Response{
-				Permission: true,
-				Timestamp:  s.lamportClock,
-				NodeId:     "local", // You can replace this with the actual node ID
-			}
-			go s.sendPermission(node, response)
-			break
-		}
-	}
-
-	return &MeService.Empty{}, nil
+func (s *Peer) receiveJoin(join *MeService.JoinMessage) {
+	append(s.peerList, join.GetPort())
 }
 
-func (s *mutualExclusionServer) sendPermission(nodeID string, response *MeService.Response) {
-	// Simulate network delay
-	time.Sleep(100 * time.Millisecond)
+func readFile() ([]string, error) {
+	// Set filename
+	fileName := "PeerPorts.txt"
 
-	// Connect to the node and send the permission response
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", "localhost", 50000), grpc.WithInsecure())
+	// Open file
+	peerPortFile, err := os.Open(fileName)
 	if err != nil {
-		log.Fatalf("Failed to dial: %v", err)
+		log.Panicf("Could not read from data from file: %s", err)
 	}
-	defer conn.Close()
+	defer peerPortFile.Close()
 
-	client := MeService.NewMutualExclusionServiceClient(conn)
-	client.RequestEntry(context.Background(), &MeService.Request{
-		Timestamp: response.Timestamp,
-		NodeId:    response.NodeId,
-	})
+	var peerPortArray []string
+
+	// Create scanner to read all lines from the file
+	scanner := bufio.NewScanner(peerPortFile)
+	for scanner.Scan() {
+		port := scanner.Text()
+		peerPortArray = append(peerPortArray, port)
+	}
+
+	// Check for errors during scanning
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return peerPortArray, nil
+}
+func (s *Peer) updateFile() {
+	// Set filename
+	fileName := "PeerPorts.txt"
+
+	// Open file
+	peerPortFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Panicf("Could not open file: %s", err)
+	}
+	defer peerPortFile.Close()
+
+	// Append port to the file
+	if _, err := peerPortFile.WriteString(s.port + "\n") {
+
+	}
+
 }
 
 func main() {
-	listen, err := net.Listen("tcp", ":50000")
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-	}
-	server := grpc.NewServer()
 
-	mutualExclusionService := &mutualExclusionServer{
-		pendingRequests: make(map[string]int64),
-	}
-
-	pb.RegisterMutualExclusionServiceServer(server, mutualExclusionService)
-
-	log.Println("Server started on :50000")
-	if err := server.Serve(listen); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
-	}
 }

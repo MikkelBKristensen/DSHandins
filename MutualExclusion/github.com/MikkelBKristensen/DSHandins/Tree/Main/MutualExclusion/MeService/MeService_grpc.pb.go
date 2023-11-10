@@ -25,6 +25,7 @@ type MeServiceClient interface {
 	Join(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*JoinMessage, error)
 	Leave(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*JoinMessage, error)
 	RequestEntry(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
+	ReleaseEntry(ctx context.Context, in *Release, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type meServiceClient struct {
@@ -62,6 +63,15 @@ func (c *meServiceClient) RequestEntry(ctx context.Context, in *Request, opts ..
 	return out, nil
 }
 
+func (c *meServiceClient) ReleaseEntry(ctx context.Context, in *Release, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/MeService.MeService/ReleaseEntry", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MeServiceServer is the server API for MeService service.
 // All implementations must embed UnimplementedMeServiceServer
 // for forward compatibility
@@ -69,6 +79,7 @@ type MeServiceServer interface {
 	Join(context.Context, *JoinMessage) (*JoinMessage, error)
 	Leave(context.Context, *JoinMessage) (*JoinMessage, error)
 	RequestEntry(context.Context, *Request) (*Response, error)
+	ReleaseEntry(context.Context, *Release) (*Empty, error)
 	mustEmbedUnimplementedMeServiceServer()
 }
 
@@ -84,6 +95,9 @@ func (UnimplementedMeServiceServer) Leave(context.Context, *JoinMessage) (*JoinM
 }
 func (UnimplementedMeServiceServer) RequestEntry(context.Context, *Request) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestEntry not implemented")
+}
+func (UnimplementedMeServiceServer) ReleaseEntry(context.Context, *Release) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReleaseEntry not implemented")
 }
 func (UnimplementedMeServiceServer) mustEmbedUnimplementedMeServiceServer() {}
 
@@ -152,6 +166,24 @@ func _MeService_RequestEntry_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MeService_ReleaseEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Release)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MeServiceServer).ReleaseEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/MeService.MeService/ReleaseEntry",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MeServiceServer).ReleaseEntry(ctx, req.(*Release))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MeService_ServiceDesc is the grpc.ServiceDesc for MeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -170,6 +202,10 @@ var MeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RequestEntry",
 			Handler:    _MeService_RequestEntry_Handler,
+		},
+		{
+			MethodName: "ReleaseEntry",
+			Handler:    _MeService_ReleaseEntry_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
