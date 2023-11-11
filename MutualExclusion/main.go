@@ -158,10 +158,14 @@ func (s *Peer) StartServer() error {
 }
 
 func (s *Peer) StartClient() error {
-	for _, port := range s.Portlist {
-		s.connect(port)
+	// Connect to all peers
+	for i := 0; i < len(s.PortList); i++ {
+		err := s.connect(s.PortList[i])
+		if err != nil {
+			return err
+		}
 	}
-
+	s.updateFile()
 	return nil
 }
 
