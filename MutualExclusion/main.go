@@ -11,6 +11,8 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type Peer struct {
@@ -18,24 +20,25 @@ type Peer struct {
 	port              string
 	server            *grpc.Server
 	client            MeService.MeServiceClient
-	lamportClock      int32
+	lamportClock      int64
 	inCriticalSection bool
 	pendingRequests   []MeService.Request
 	peerList          map[string]MeService.MeServiceClient
-	PortList          []string
+	// TODO Do not use Portlist, and instead just read directly from file on startup
+	PortList []string
 }
 
 func NewPeer(port string) *Peer {
 	return &Peer{port: port}
 }
 
-func (s *Peer) sendConnectionStatus(status bool) {
-	//Status: 0 for leaving and 1 for joining
+func (s *Peer) sendConnectionStatus(isJoin bool) {
+	//Status: false for leaving and true for joining
 
 	// create a new connectionMsg
 	connectionMsg := MeService.ConnectionMsg{
 		Port:   s.port,
-		IsJoin: status,
+		IsJoin: isJoin,
 	}
 
 	// Send connectionMSG to all peers
@@ -46,18 +49,22 @@ func (s *Peer) sendConnectionStatus(status bool) {
 
 func (s *Peer) receiveConnectionStatus(message *MeService.ConnectionMsg) {
 	// TODO Update clock
+
 	if message.IsJoin == true {
 		s.connect(message.GetPort())
-
 	} else if message.IsJoin == false {
-		//TODO remove peer from peerList
+		delete(s.peerList, message.GetPort())
 	}
-
 }
 
 func (s *Peer) leave() {
-	s.deleteFromFile()
-	panic("Not implemented yet")
+
+	s.sendConnectionStatus(false)
+	err := s.deleteOwnPortFromFile()
+	if err != nil {
+		return
+	}
+
 }
 
 func readFile() ([]string, error) {
@@ -103,11 +110,64 @@ func (s *Peer) updateFile() {
 	if _, err := peerPortFile.WriteString(s.port + "\n"); err != nil {
 		log.Fatalf("Could not add Port: %s to file", s.port)
 	}
-
+	log.Printf("Port %s added to file", s.port)
 }
 
-func (s *Peer) deleteFromFile() {
-	panic("Not implemented yet")
+func (s *Peer) deleteOwnPortFromFile() error {
+	// Choose filename
+	fileName := "PeerPorts.txt"
+
+	// Open file
+	peerPortFile, err := os.OpenFile(fileName, os.O_RDWR, 0644)
+	if err != nil {
+		log.Panicf("Could not open file: %s", err)
+	}
+	defer func(peerPortFile *os.File) {
+		err := peerPortFile.Close()
+		if err != nil {
+
+		}
+	}(peerPortFile)
+
+	// Initialize array to hold the modified content
+	var stringsArray []string
+
+	// Create a scanner to read the file line by line
+	scanner := bufio.NewScanner(peerPortFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Check if the line contains the own port
+		if !strings.Contains(line, s.port) {
+			// If not, append it to the modified array
+			stringsArray = append(stringsArray, line)
+		}
+	}
+
+	// Check for errors during scanning
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	// Truncate the file and write the modified content back
+	if err := peerPortFile.Truncate(0); err != nil {
+		return err
+	}
+	// Go to the beginning of the file
+	if _, err := peerPortFile.Seek(0, 0); err != nil {
+		return err
+	}
+	// Write the modified content to the file
+	writer := bufio.NewWriter(peerPortFile)
+	for _, line := range stringsArray {
+		fmt.Fprintln(writer, line)
+	}
+	// Flush write to ensure that all lines are written
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	log.Printf("Port %s removed from file", s.port)
+	return nil
 }
 
 func (s *Peer) updatePortList() (err error) {
@@ -132,7 +192,9 @@ func (s *Peer) connect(port string) (err error) {
 	return nil
 }
 
-func (s *Peer) StartServer() error {
+func (s *Peer) Start() error {
+	//This is where the peer starts, first with the server part and then the client part
+
 	// Create listener
 	listener, err := net.Listen("tcp", ":"+s.port)
 	if err != nil {
@@ -143,7 +205,7 @@ func (s *Peer) StartServer() error {
 
 	// Create new server
 	s.server = grpc.NewServer()
-	MeService.RegisterMeServiceServer(s.server, s)
+	MeService.RegisterMeServiceServer(s.server, s.UnimplementedMeServiceServer)
 
 	// Start server
 	go func() {
@@ -153,6 +215,7 @@ func (s *Peer) StartServer() error {
 	}()
 	s.updatePortList()
 	s.updateFile()
+	s.StartClient()
 
 	return nil
 }
@@ -165,12 +228,73 @@ func (s *Peer) StartClient() error {
 			return err
 		}
 	}
-	s.updateFile()
+	s.sendConnectionStatus(true)
+	return nil
+}
+
+func (s *Peer) RequestEntry() error {
+
+	// Ideas to request all clients simultaneously:
+	// Create slice of responses
+	// Loop over ports and send request
+	// When slice is same size as list of ports, we should be done, no?
+
+	// Loop through connected peers and send request to each
+	for peerPort, client := range s.peerList {
+		response, err := client.RequestEntry(context.Background(), &MeService.Request{
+			Timestamp: time.Now().Unix(),
+			NodeId:    s.port,
+		})
+
+		if err != nil {
+			return fmt.Errorf("RequestEntry to peer on port %s failed: %v", peerPort, err)
+		}
+
+		// Handle the response based on the algorithm logic
+		if response.Permission {
+			// Enter the critical section
+			s.inCriticalSection = true
+			log.Printf("Peer on port %s entered critical section\n", s.port)
+
+			// Execute critical section logic
+			log.Printf("Port %s is in critical section @ %v lamport time \n", s.port, s.lamportClock)
+
+			// Exit the critical section
+			s.inCriticalSection = false
+			log.Printf("Peer on port %s exited critical section\n", s.port)
+
+			// Break the loop to ensure only one peer enters the critical section at a time
+			break
+		} else {
+			log.Printf("Permission to enter critical section denied for peer on port %s\n", s.port)
+		}
+	}
+
 	return nil
 }
 
 func main() {
-	Peer1 := NewPeer("5001")
-	Peer1.StartServer()
+	// Set up the log
+	f, err := os.OpenFile("Log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Error opening log: %v", err)
+	}
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
 
+		}
+	}(f)
+	log.SetOutput(f)
+
+	Peer1 := NewPeer("5001")
+	err = Peer1.Start()
+	if err != nil {
+		return
+	}
+	Peer1.leave()
+
+	for {
+
+	}
 }

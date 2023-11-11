@@ -75,6 +75,8 @@ func (x *Request) GetNodeId() string {
 	return ""
 }
 
+// TODO: If we want to avoid having to wait for timeout in case of 2 requests
+// TODO: then we should make use of the
 type Response struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

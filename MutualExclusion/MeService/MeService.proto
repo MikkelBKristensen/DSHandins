@@ -14,6 +14,8 @@ message Request {
   string nodeId = 2;
 }
 
+// TODO: If we want to avoid having to wait for timeout in case of 2 requests
+// TODO: then we should make use of the permission to let clients know someone else has Critical access now
 message Response {
   bool permission = 1;
   int64 timestamp = 2;
