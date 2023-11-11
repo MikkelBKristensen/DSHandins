@@ -29,8 +29,6 @@ func NewPeer(port string) *Peer {
 
 func (s *Peer) sendJoin(status bool) {
 	//Status: 0 for leaving and 1 for joining
-	// Update peerList to be equal the PeerPorts file
-	// and append own port to the file
 	s.peerList, _ = readFile()
 	s.updateFile()
 
@@ -51,10 +49,10 @@ func (s *Peer) receiveConnectionStatus(message *MeService.ConnectionMsg) {
 	// TODO Update clock
 	if message.IsJoin == true {
 		s.connect(message.GetPort())
-		append(s.PortList, message.GetPort())
 
-	} else {
+	} else if message.IsJoin == false {
 		//Make it delete the port from the PeerList
+		//Remove entry
 
 	}
 
@@ -156,10 +154,17 @@ func (s *Peer) StartServer() error {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
-
 	s.updatePortList()
 	s.updateFile()
 
+	return nil
+}
+
+func (s *Peer) StartClient() error {
+	for _, port := range s.Portlist {
+		s.connect(port)
+	}
+	
 	return nil
 }
 
