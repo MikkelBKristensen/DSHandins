@@ -5,8 +5,7 @@ option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/Main/MutualExcl
 package MeService;
 
 service MeService {
-  rpc Join (ConnectionMsg) returns (Empty);
-  rpc Leave(ConnectionMsg) returns (Empty);
+  rpc ConnectionStatus (ConnectionMsg) returns (Empty);
   rpc RequestEntry (Request) returns (Response);
 }
 

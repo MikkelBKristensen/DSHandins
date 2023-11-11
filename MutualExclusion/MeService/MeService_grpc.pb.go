@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v4.24.3
-// source: MeService/MeService.proto
+// source: MeService.proto
 
 package MeService
 
@@ -22,8 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MeServiceClient interface {
-	Join(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error)
-	Leave(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error)
+	ConnectionStatus(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error)
 	RequestEntry(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
 }
 
@@ -35,18 +34,9 @@ func NewMeServiceClient(cc grpc.ClientConnInterface) MeServiceClient {
 	return &meServiceClient{cc}
 }
 
-func (c *meServiceClient) Join(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error) {
+func (c *meServiceClient) ConnectionStatus(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/MeService.MeService/Join", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *meServiceClient) Leave(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/MeService.MeService/Leave", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/MeService.MeService/ConnectionStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +56,7 @@ func (c *meServiceClient) RequestEntry(ctx context.Context, in *Request, opts ..
 // All implementations must embed UnimplementedMeServiceServer
 // for forward compatibility
 type MeServiceServer interface {
-	Join(context.Context, *ConnectionMsg) (*Empty, error)
-	Leave(context.Context, *ConnectionMsg) (*Empty, error)
+	ConnectionStatus(context.Context, *ConnectionMsg) (*Empty, error)
 	RequestEntry(context.Context, *Request) (*Response, error)
 	mustEmbedUnimplementedMeServiceServer()
 }
@@ -76,11 +65,8 @@ type MeServiceServer interface {
 type UnimplementedMeServiceServer struct {
 }
 
-func (UnimplementedMeServiceServer) Join(context.Context, *ConnectionMsg) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
-}
-func (UnimplementedMeServiceServer) Leave(context.Context, *ConnectionMsg) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Leave not implemented")
+func (UnimplementedMeServiceServer) ConnectionStatus(context.Context, *ConnectionMsg) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConnectionStatus not implemented")
 }
 func (UnimplementedMeServiceServer) RequestEntry(context.Context, *Request) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestEntry not implemented")
@@ -98,38 +84,20 @@ func RegisterMeServiceServer(s grpc.ServiceRegistrar, srv MeServiceServer) {
 	s.RegisterService(&MeService_ServiceDesc, srv)
 }
 
-func _MeService_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MeService_ConnectionStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ConnectionMsg)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MeServiceServer).Join(ctx, in)
+		return srv.(MeServiceServer).ConnectionStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/MeService.MeService/Join",
+		FullMethod: "/MeService.MeService/ConnectionStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MeServiceServer).Join(ctx, req.(*ConnectionMsg))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MeService_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConnectionMsg)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MeServiceServer).Leave(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/MeService.MeService/Leave",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MeServiceServer).Leave(ctx, req.(*ConnectionMsg))
+		return srv.(MeServiceServer).ConnectionStatus(ctx, req.(*ConnectionMsg))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -160,12 +128,8 @@ var MeService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Join",
-			Handler:    _MeService_Join_Handler,
-		},
-		{
-			MethodName: "Leave",
-			Handler:    _MeService_Leave_Handler,
+			MethodName: "ConnectionStatus",
+			Handler:    _MeService_ConnectionStatus_Handler,
 		},
 		{
 			MethodName: "RequestEntry",
@@ -173,5 +137,5 @@ var MeService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "MeService/MeService.proto",
+	Metadata: "MeService.proto",
 }

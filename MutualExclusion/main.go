@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	MeService "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
 	_ "github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 )
 
 type Peer struct {
@@ -27,10 +29,8 @@ func NewPeer(port string) *Peer {
 	return &Peer{port: port}
 }
 
-func (s *Peer) sendJoin(status bool) {
+func (s *Peer) sendConnectionStatus(status bool) {
 	//Status: 0 for leaving and 1 for joining
-	s.peerList, _ = readFile()
-	s.updateFile()
 
 	// create a new connectionMsg
 	connectionMsg := MeService.ConnectionMsg{
@@ -38,10 +38,9 @@ func (s *Peer) sendJoin(status bool) {
 		IsJoin: status,
 	}
 
+	// Send connectionMSG to all peers
 	for i := 0; i < len(s.peerList); i++ {
-		port := s.peerList[i]
-		// TODO Connect to peer
-		// TODO Send connectionMsg to peer
+		s.peerList[strconv.Itoa(i)].ConnectionStatus(context.Background(), &connectionMsg)
 	}
 }
 
@@ -51,9 +50,7 @@ func (s *Peer) receiveConnectionStatus(message *MeService.ConnectionMsg) {
 		s.connect(message.GetPort())
 
 	} else if message.IsJoin == false {
-		//Make it delete the port from the PeerList
-		//Remove entry
-
+		//TODO remove peer from peerList
 	}
 
 }
@@ -164,7 +161,7 @@ func (s *Peer) StartClient() error {
 	for _, port := range s.Portlist {
 		s.connect(port)
 	}
-	
+
 	return nil
 }
 
