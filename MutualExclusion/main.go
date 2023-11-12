@@ -21,11 +21,9 @@ type Peer struct {
 	client           MeService.MeServiceClient
 	lamportClock     int64
 	allowedTimestamp int64
-	requestInCS      bool
-
 	// 0 = Released, 1 = Wanted, 2 = Held
 	state           int
-	pendingRequests []MeService.Request
+	pendingRequests []MeService.Message
 	peerList        map[string]MeService.MeServiceClient
 
 	// TODO Do not use Portlist, and instead just read directly from file on startup
@@ -36,35 +34,35 @@ func NewPeer(port string) *Peer {
 	return &Peer{port: port}
 }
 
-func (s *Peer) sendConnectionStatus(isJoin bool) {
+func (p *Peer) sendConnectionStatus(isJoin bool) {
 	//Status: false for leaving and true for joining
 
 	// create a new connectionMsg
 	connectionMsg := MeService.ConnectionMsg{
-		Port:   s.port,
+		Port:   p.port,
 		IsJoin: isJoin,
 	}
 
 	// Send connectionMSG to all peers
-	for i := 0; i < len(s.peerList); i++ {
-		s.peerList[strconv.Itoa(i)].ConnectionStatus(context.Background(), &connectionMsg)
+	for i := 0; i < len(p.peerList); i++ {
+		p.peerList[strconv.Itoa(i)].ConnectionStatus(context.Background(), &connectionMsg)
 	}
 }
 
-func (s *Peer) receiveConnectionStatus(message *MeService.ConnectionMsg) {
+func (p *Peer) receiveConnectionStatus(message *MeService.ConnectionMsg) {
 	// TODO Update clock
 
 	if message.IsJoin == true {
-		s.connect(message.GetPort())
+		p.connect(message.GetPort())
 	} else if message.IsJoin == false {
-		delete(s.peerList, message.GetPort())
+		delete(p.peerList, message.GetPort())
 	}
 }
 
-func (s *Peer) leave() {
+func (p *Peer) leave() {
 
-	s.sendConnectionStatus(false)
-	err := s.deleteOwnPortFromFile()
+	p.sendConnectionStatus(false)
+	err := p.deleteOwnPortFromFile()
 	if err != nil {
 		return
 	}
@@ -99,7 +97,7 @@ func readFile() ([]string, error) {
 	return peerPortArray, nil
 }
 
-func (s *Peer) updateFile() {
+func (p *Peer) updateFile() {
 	// Choose filename
 	fileName := "PeerPorts.txt"
 
@@ -111,13 +109,13 @@ func (s *Peer) updateFile() {
 	defer peerPortFile.Close()
 
 	// Append port to the file
-	if _, err := peerPortFile.WriteString(s.port + "\n"); err != nil {
-		log.Fatalf("Could not add Port: %s to file", s.port)
+	if _, err := peerPortFile.WriteString(p.port + "\n"); err != nil {
+		log.Fatalf("Could not add Port: %s to file", p.port)
 	}
-	log.Printf("Port %s added to file", s.port)
+	log.Printf("Port %s added to file", p.port)
 }
 
-func (s *Peer) deleteOwnPortFromFile() error {
+func (p *Peer) deleteOwnPortFromFile() error {
 	// Choose filename
 	fileName := "PeerPorts.txt"
 
@@ -142,7 +140,7 @@ func (s *Peer) deleteOwnPortFromFile() error {
 		line := scanner.Text()
 
 		// Check if the line contains the own port
-		if !strings.Contains(line, s.port) {
+		if !strings.Contains(line, p.port) {
 			// If not, append it to the modified array
 			stringsArray = append(stringsArray, line)
 		}
@@ -170,93 +168,103 @@ func (s *Peer) deleteOwnPortFromFile() error {
 	if err := writer.Flush(); err != nil {
 		return err
 	}
-	log.Printf("Port %s removed from file", s.port)
+	log.Printf("Port %s removed from file", p.port)
 	return nil
 }
 
-func (s *Peer) updatePortList() (err error) {
-	s.PortList, err = readFile()
+func (p *Peer) updatePortList() (err error) {
+	p.PortList, err = readFile()
 	if err != nil {
 		log.Fatalf("Could not read from file: %s", err)
 	}
-	s.updateFile()
+	p.updateFile()
 
 	return nil
 }
 
-func (s *Peer) connect(port string) (err error) {
+func (p *Peer) connect(port string) (err error) {
 	//Connect to peers
 	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("could not connect to peer on port %s: %v", port, err)
 	}
 	// add connection to peerList
-	s.peerList[port] = MeService.NewMeServiceClient(conn)
+	p.peerList[port] = MeService.NewMeServiceClient(conn)
 
 	return nil
 }
 
-func (s *Peer) Start() error {
+func (p *Peer) Start() error {
 	//This is where the peer starts, first with the server part and then the client part
 
 	// Create listener
-	listener, err := net.Listen("tcp", ":"+s.port)
+	listener, err := net.Listen("tcp", ":"+p.port)
 	if err != nil {
-		log.Fatalf("Could not listen to port: %s: %v", s.port, err)
+		log.Fatalf("Could not listen to port: %s: %v", p.port, err)
 	}
 
-	fmt.Println("Now listening on port: ", s.port)
+	fmt.Println("Now listening on port: ", p.port)
 
 	// Create new server
-	s.server = grpc.NewServer()
-	MeService.RegisterMeServiceServer(s.server, s.UnimplementedMeServiceServer)
+	p.server = grpc.NewServer()
+	MeService.RegisterMeServiceServer(p.server, p.UnimplementedMeServiceServer)
 
 	// Start server
 	go func() {
-		if err := s.server.Serve(listener); err != nil {
+		if err := p.server.Serve(listener); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
-	s.updatePortList()
-	s.updateFile()
-	s.StartClient()
+	p.updatePortList()
+	p.updateFile()
+	p.StartClient()
 
 	return nil
 }
 
-func (s *Peer) StartClient() error {
+func (p *Peer) StartClient() error {
 	// Connect to all peers
-	for i := 0; i < len(s.PortList); i++ {
-		err := s.connect(s.PortList[i])
+	for i := 0; i < len(p.PortList); i++ {
+		err := p.connect(p.PortList[i])
 		if err != nil {
 			return err
 		}
 	}
-	s.sendConnectionStatus(true)
+	p.sendConnectionStatus(true)
 	return nil
 }
 
-func (s *Peer) RequestEntry() {
+// This is the Client part of the peer, where it sends requests
+func (p *Peer) MakeRequest() {
+	p.state = 1
+	p.lamportClock++
+	p.allowedTimestamp = p.lamportClock
 
+	for _, client := range p.peerList {
+		_, _ = client.RequestEntry(context.Background(), &MeService.Message{
+			Timestamp: p.lamportClock,
+			NodeId:    p.port,
+		})
+	}
 }
 
-func (s *Peer) RequestEntryRPC(ctx context.Context, req *MeService.Request) (*MeService.Response, error) {
+// This is the server part of the peer, where it handles how to return the actual rpc method
+func (p *Peer) RequestEntryRPC(ctx context.Context, in *MeService.Message) (*MeService.Message, error) {
+	
+}
+
+func (p *Peer) canEnterCriticalSection() bool {
 	panic("")
 }
 
-func (s *Peer) canEnterCriticalSection() bool {
-	panic("")
+func (p *Peer) enterCriticalSection() {
+	p.state = 2
+
+	log.Printf("Peer %s enters critical section at lamport time %d", p.port, p.lamportClock)
+
 }
 
-func (s *Peer) enterCriticalSection() {
-
-}
-
-func (s *Peer) ReleaseCriticalSection(ctx context.Context, req *MeService.Request) (*MeService.Empty, error) {
-	panic("")
-}
-
-func (s *Peer) leaveCriticalSection() {
+func (p *Peer) leaveCriticalSection() {
 }
 
 func max(a, b int64) int64 {

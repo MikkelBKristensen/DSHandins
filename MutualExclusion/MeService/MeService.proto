@@ -6,23 +6,13 @@ package MeService;
 
 service MeService {
   rpc ConnectionStatus (ConnectionMsg) returns (Empty);
-  rpc RequestEntry (Request) returns (Response);
-  rpc ReleaseCriticalSection (Request) returns (Empty);
+  rpc RequestEntry (Message) returns (Message);
 }
 
-message Request {
+message Message {
   int64 timestamp = 1;
   string nodeId = 2;
 }
-
-// TODO: If we want to avoid having to wait for timeout in case of 2 requests
-// TODO: then we should make use of the permission to let clients know someone else has Critical access now
-message Response {
-  bool permission = 1;
-  int64 timestamp = 2;
-  string nodeId = 3;
-}
-
 
 message ConnectionMsg {
   string port = 1;

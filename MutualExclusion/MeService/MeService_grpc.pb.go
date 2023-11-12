@@ -19,9 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	MeService_ConnectionStatus_FullMethodName       = "/MeService.MeService/ConnectionStatus"
-	MeService_RequestEntry_FullMethodName           = "/MeService.MeService/RequestEntry"
-	MeService_ReleaseCriticalSection_FullMethodName = "/MeService.MeService/ReleaseCriticalSection"
+	MeService_ConnectionStatus_FullMethodName = "/MeService.MeService/ConnectionStatus"
+	MeService_RequestEntry_FullMethodName     = "/MeService.MeService/RequestEntry"
 )
 
 // MeServiceClient is the client API for MeService service.
@@ -29,8 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MeServiceClient interface {
 	ConnectionStatus(ctx context.Context, in *ConnectionMsg, opts ...grpc.CallOption) (*Empty, error)
-	RequestEntry(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
-	ReleaseCriticalSection(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Empty, error)
+	RequestEntry(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error)
 }
 
 type meServiceClient struct {
@@ -50,18 +48,9 @@ func (c *meServiceClient) ConnectionStatus(ctx context.Context, in *ConnectionMs
 	return out, nil
 }
 
-func (c *meServiceClient) RequestEntry(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error) {
-	out := new(Response)
+func (c *meServiceClient) RequestEntry(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error) {
+	out := new(Message)
 	err := c.cc.Invoke(ctx, MeService_RequestEntry_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *meServiceClient) ReleaseCriticalSection(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, MeService_ReleaseCriticalSection_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +62,7 @@ func (c *meServiceClient) ReleaseCriticalSection(ctx context.Context, in *Reques
 // for forward compatibility
 type MeServiceServer interface {
 	ConnectionStatus(context.Context, *ConnectionMsg) (*Empty, error)
-	RequestEntry(context.Context, *Request) (*Response, error)
-	ReleaseCriticalSection(context.Context, *Request) (*Empty, error)
+	RequestEntry(context.Context, *Message) (*Message, error)
 	mustEmbedUnimplementedMeServiceServer()
 }
 
@@ -85,11 +73,8 @@ type UnimplementedMeServiceServer struct {
 func (UnimplementedMeServiceServer) ConnectionStatus(context.Context, *ConnectionMsg) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConnectionStatus not implemented")
 }
-func (UnimplementedMeServiceServer) RequestEntry(context.Context, *Request) (*Response, error) {
+func (UnimplementedMeServiceServer) RequestEntry(context.Context, *Message) (*Message, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestEntry not implemented")
-}
-func (UnimplementedMeServiceServer) ReleaseCriticalSection(context.Context, *Request) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReleaseCriticalSection not implemented")
 }
 func (UnimplementedMeServiceServer) mustEmbedUnimplementedMeServiceServer() {}
 
@@ -123,7 +108,7 @@ func _MeService_ConnectionStatus_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _MeService_RequestEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Request)
+	in := new(Message)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -135,25 +120,7 @@ func _MeService_RequestEntry_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: MeService_RequestEntry_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MeServiceServer).RequestEntry(ctx, req.(*Request))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MeService_ReleaseCriticalSection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Request)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MeServiceServer).ReleaseCriticalSection(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MeService_ReleaseCriticalSection_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MeServiceServer).ReleaseCriticalSection(ctx, req.(*Request))
+		return srv.(MeServiceServer).RequestEntry(ctx, req.(*Message))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -172,10 +139,6 @@ var MeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RequestEntry",
 			Handler:    _MeService_RequestEntry_Handler,
-		},
-		{
-			MethodName: "ReleaseCriticalSection",
-			Handler:    _MeService_ReleaseCriticalSection_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
