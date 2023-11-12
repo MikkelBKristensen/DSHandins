@@ -219,6 +219,7 @@ func (s *Peer) Start() error {
 		}
 	}()
 	s.updatePortList()
+	s.updateFile()
 	s.StartClient()
 
 	return nil
@@ -248,7 +249,7 @@ func (s *Peer) RequestEntry() {
 		})
 	}
 
-	log.Printf("Peer %s sent entry request\n", s.port)
+	log.Printf("Peer %s sent entry request (Timestamp: %d)\n", s.port, s.lamportClock)
 
 	// Wait for permission
 	for !s.canEnterCriticalSection() {
@@ -266,7 +267,7 @@ func (s *Peer) RequestEntryRPC(ctx context.Context, req *MeService.Request) (*Me
 	// Handle request
 	if s.state == 2 || (s.state == 1 && (req.Timestamp < s.allowedTimestamp || (req.Timestamp == s.allowedTimestamp && s.port < req.NodeId))) {
 		// If the process is in the critical section or has a higher priority, grant permission
-		log.Printf("Peer %s granted permission to Peer %s\n", s.port, req.NodeId)
+		log.Printf("Peer %s granted permission to Peer %s (Timestamp: %d)\n", s.port, req.NodeId, s.lamportClock)
 		return &MeService.Response{
 			Permission: true,
 			Timestamp:  s.lamportClock,
@@ -275,7 +276,7 @@ func (s *Peer) RequestEntryRPC(ctx context.Context, req *MeService.Request) (*Me
 	} else {
 		// Otherwise, queue the request
 		s.pendingRequests = append(s.pendingRequests, *req)
-		log.Printf("Peer %s queued request from Peer %s\n", s.port, req.NodeId)
+		log.Printf("Peer %s queued request from Peer %s (Timestamp: %d)\n", s.port, req.NodeId, s.lamportClock)
 		return &MeService.Response{
 			Permission: false,
 			Timestamp:  s.lamportClock,
@@ -301,7 +302,7 @@ func (s *Peer) enterCriticalSection() {
 	s.requestInCS = true
 	s.allowedTimestamp = s.lamportClock
 
-	log.Printf("Peer %s entered critical section\n", s.port)
+	log.Printf("Peer %s entered critical section (Timestamp: %d)\n", s.port, s.lamportClock)
 
 	// Execute critical section logic here...
 
@@ -322,7 +323,7 @@ func (s *Peer) ReleaseCriticalSection(ctx context.Context, req *MeService.Reques
 	}
 	s.pendingRequests = newQueue
 
-	log.Printf("Peer %s released critical section\n", req.NodeId)
+	log.Printf("Peer %s released critical section (Timestamp: %d)\n", req.NodeId, s.lamportClock)
 
 	return &MeService.Empty{}, nil
 }
