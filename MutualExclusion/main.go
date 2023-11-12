@@ -12,18 +12,23 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Peer struct {
 	MeService.UnimplementedMeServiceServer
-	port             string
-	server           *grpc.Server
-	client           MeService.MeServiceClient
-	lamportClock     int64
+	port         string
+	server       *grpc.Server
+	client       MeService.MeServiceClient
+	lamportClock int64
+
+	// Is the value of the timestamp sent with an entryRequest
 	allowedTimestamp int64
+
 	// 0 = Released, 1 = Wanted, 2 = Held
 	state           int
-	pendingRequests []MeService.Message
+	pendingRequests []*MeService.Message
 	peerList        map[string]MeService.MeServiceClient
 
 	// TODO Do not use Portlist, and instead just read directly from file on startup
@@ -234,37 +239,90 @@ func (p *Peer) StartClient() error {
 	return nil
 }
 
-// This is the Client part of the peer, where it sends requests
+// MakeRequest This is the Client part of the peer, where it sends requests
 func (p *Peer) MakeRequest() {
 	p.state = 1
 	p.lamportClock++
 	p.allowedTimestamp = p.lamportClock
 
+	var wg sync.WaitGroup
+
 	for _, client := range p.peerList {
-		_, _ = client.RequestEntry(context.Background(), &MeService.Message{
+		// Increment the WaitGroup counter for each goroutine
+		wg.Add(1)
+
+		// Make gRPC call in a goroutine
+		go func(client MeService.MeServiceClient) {
+			// Decrement the WaitGroup counter when the goroutine finishes
+			defer wg.Done()
+
+			// Make the gRPC call
+			_, _ = client.RequestEntry(context.Background(), &MeService.Message{
+				Timestamp: p.lamportClock,
+				NodeId:    p.port,
+			})
+		}(client)
+	}
+
+	// Wait for all goroutines to finish before returning
+	wg.Wait()
+
+	// Enter critical section
+	p.enterCriticalSection()
+	p.leaveCriticalSection()
+}
+
+// RequestEntry This is the server part of the peer, where it handles how to return the actual rpc method
+func (p *Peer) RequestEntry(ctx context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
+
+	if p.state == 2 || (p.state == 1 && p.allowedTimestamp < entryRequest.Timestamp) || (p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
+		// TODO Extract following two lines to method
+		p.lamportClock = max(p.lamportClock, entryRequest.Timestamp)
+		p.lamportClock++
+		p.pendingRequests = append(p.pendingRequests, entryRequest)
+
+		// Infinite loop while waiting for the critical section to be released
+		for p.state == 2 {
+
+		}
+
+		return &MeService.Message{
 			Timestamp: p.lamportClock,
 			NodeId:    p.port,
-		})
+		}, nil
+
+	} else if (p.state == 1 && entryRequest.Timestamp < p.allowedTimestamp) || (p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
+		// TODO Extract following two lines to method
+		p.lamportClock = max(p.lamportClock, entryRequest.Timestamp)
+		p.lamportClock++
+		return &MeService.Message{
+			Timestamp: p.lamportClock,
+			NodeId:    p.port,
+		}, nil
+
+	} else {
+		p.lamportClock = max(p.lamportClock, entryRequest.Timestamp)
+		p.lamportClock++
+		return &MeService.Message{
+			Timestamp: p.lamportClock,
+			NodeId:    p.port,
+		}, nil
 	}
 }
 
-// This is the server part of the peer, where it handles how to return the actual rpc method
-func (p *Peer) RequestEntryRPC(ctx context.Context, in *MeService.Message) (*MeService.Message, error) {
-	
-}
-
-func (p *Peer) canEnterCriticalSection() bool {
-	panic("")
-}
-
 func (p *Peer) enterCriticalSection() {
+	p.lamportClock++
 	p.state = 2
-
 	log.Printf("Peer %s enters critical section at lamport time %d", p.port, p.lamportClock)
 
+	// wait 5 seconds before leaving
+	time.Sleep(5 * time.Second)
 }
 
 func (p *Peer) leaveCriticalSection() {
+	p.lamportClock++
+	p.state = 0
+	log.Printf("Peer %s leaves critical section at lamport time %d", p.port, p.lamportClock)
 }
 
 func max(a, b int64) int64 {
