@@ -7,6 +7,7 @@ package MeService;
 service MeService {
   rpc ConnectionStatus (ConnectionMsg) returns (Empty);
   rpc RequestEntry (Request) returns (Response);
+  rpc ReleaseCriticalSection (Request) returns (Empty);
 }
 
 message Request {
