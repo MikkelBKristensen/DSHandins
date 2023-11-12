@@ -17,13 +17,18 @@ import (
 
 type Peer struct {
 	MeService.UnimplementedMeServiceServer
-	port              string
-	server            *grpc.Server
-	client            MeService.MeServiceClient
-	lamportClock      int64
-	inCriticalSection bool
-	pendingRequests   []MeService.Request
-	peerList          map[string]MeService.MeServiceClient
+	port             string
+	server           *grpc.Server
+	client           MeService.MeServiceClient
+	lamportClock     int64
+	allowedTimestamp int64
+	requestInCS      bool
+
+	// 0 = Released, 1 = Wanted, 2 = Held
+	state           int
+	pendingRequests []MeService.Request
+	peerList        map[string]MeService.MeServiceClient
+
 	// TODO Do not use Portlist, and instead just read directly from file on startup
 	PortList []string
 }
@@ -214,7 +219,6 @@ func (s *Peer) Start() error {
 		}
 	}()
 	s.updatePortList()
-	s.updateFile()
 	s.StartClient()
 
 	return nil
@@ -232,45 +236,120 @@ func (s *Peer) StartClient() error {
 	return nil
 }
 
-func (s *Peer) RequestEntry() error {
+func (s *Peer) RequestEntry() {
+	s.state = 1      // Set state to "Wanted"
+	s.lamportClock++ // Increment local timestamp
 
-	// Ideas to request all clients simultaneously:
-	// Create slice of responses
-	// Loop over ports and send request
-	// When slice is same size as list of ports, we should be done, no?
-
-	// Loop through connected peers and send request to each
-	for peerPort, client := range s.peerList {
-		response, err := client.RequestEntry(context.Background(), &MeService.Request{
-			Timestamp: time.Now().Unix(),
+	// Broadcast request to all other peers
+	for _, client := range s.peerList {
+		client.RequestEntry(context.Background(), &MeService.Request{
+			Timestamp: s.lamportClock,
 			NodeId:    s.port,
 		})
-
-		if err != nil {
-			return fmt.Errorf("RequestEntry to peer on port %s failed: %v", peerPort, err)
-		}
-
-		// Handle the response based on the algorithm logic
-		if response.Permission {
-			// Enter the critical section
-			s.inCriticalSection = true
-			log.Printf("Peer on port %s entered critical section\n", s.port)
-
-			// Execute critical section logic
-			log.Printf("Port %s is in critical section @ %v lamport time \n", s.port, s.lamportClock)
-
-			// Exit the critical section
-			s.inCriticalSection = false
-			log.Printf("Peer on port %s exited critical section\n", s.port)
-
-			// Break the loop to ensure only one peer enters the critical section at a time
-			break
-		} else {
-			log.Printf("Permission to enter critical section denied for peer on port %s\n", s.port)
-		}
 	}
 
-	return nil
+	log.Printf("Peer %s sent entry request\n", s.port)
+
+	// Wait for permission
+	for !s.canEnterCriticalSection() {
+		// Wait until all replies are received
+	}
+
+	// Enter critical section
+	s.enterCriticalSection()
+}
+
+func (s *Peer) RequestEntryRPC(ctx context.Context, req *MeService.Request) (*MeService.Response, error) {
+	// Update local clock
+	s.lamportClock = max(s.lamportClock, req.Timestamp) + 1
+
+	// Handle request
+	if s.state == 2 || (s.state == 1 && (req.Timestamp < s.allowedTimestamp || (req.Timestamp == s.allowedTimestamp && s.port < req.NodeId))) {
+		// If the process is in the critical section or has a higher priority, grant permission
+		log.Printf("Peer %s granted permission to Peer %s\n", s.port, req.NodeId)
+		return &MeService.Response{
+			Permission: true,
+			Timestamp:  s.lamportClock,
+			NodeId:     s.port,
+		}, nil
+	} else {
+		// Otherwise, queue the request
+		s.pendingRequests = append(s.pendingRequests, *req)
+		log.Printf("Peer %s queued request from Peer %s\n", s.port, req.NodeId)
+		return &MeService.Response{
+			Permission: false,
+			Timestamp:  s.lamportClock,
+			NodeId:     s.port,
+		}, nil
+	}
+}
+
+func (s *Peer) canEnterCriticalSection() bool {
+	// Check if the process can enter the critical section based on the received replies
+	for _, req := range s.pendingRequests {
+		if req.Timestamp > s.allowedTimestamp {
+			return false
+		} else if req.Timestamp == s.allowedTimestamp && s.port > req.NodeId {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Peer) enterCriticalSection() {
+	s.state = 2 // Set state to "Held"
+	s.requestInCS = true
+	s.allowedTimestamp = s.lamportClock
+
+	log.Printf("Peer %s entered critical section\n", s.port)
+
+	// Execute critical section logic here...
+
+	// Leave critical section
+	s.leaveCriticalSection()
+}
+
+func (s *Peer) ReleaseCriticalSection(ctx context.Context, req *MeService.Request) (*MeService.Empty, error) {
+	// Update local clock
+	s.lamportClock = max(s.lamportClock, req.Timestamp) + 1
+
+	// Remove the released process from the pending requests queue
+	var newQueue []MeService.Request
+	for _, r := range s.pendingRequests {
+		if r.NodeId != req.NodeId {
+			newQueue = append(newQueue, r)
+		}
+	}
+	s.pendingRequests = newQueue
+
+	log.Printf("Peer %s released critical section\n", req.NodeId)
+
+	return &MeService.Empty{}, nil
+}
+
+func (s *Peer) leaveCriticalSection() {
+	s.state = 0 // Set state to "Released"
+	s.requestInCS = false
+
+	// Send release messages to all queued processes
+	for _, req := range s.pendingRequests {
+		client := s.peerList[req.NodeId]
+		client.ReleaseCriticalSection(context.Background(), &MeService.Request{
+			Timestamp: s.lamportClock,
+			NodeId:    s.port,
+		})
+		log.Printf("Peer %s sent release message to Peer %s\n", s.port, req.NodeId)
+	}
+
+	// Clear the pending requests queue
+	s.pendingRequests = nil
+}
+
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func main() {
@@ -287,14 +366,64 @@ func main() {
 	}(f)
 	log.SetOutput(f)
 
-	Peer1 := NewPeer("5001")
-	err = Peer1.Start()
-	if err != nil {
-		return
-	}
-	Peer1.leave()
+	// Create three peers
+	peer1 := NewPeer("5001")
+	peer2 := NewPeer("5002")
+	peer3 := NewPeer("5003")
 
+	// Start peers
+	go func() {
+		err := peer1.Start()
+		if err != nil {
+			log.Fatalf("Error starting peer1: %v", err)
+		}
+	}()
+	go func() {
+		err := peer2.Start()
+		if err != nil {
+			log.Fatalf("Error starting peer2: %v", err)
+		}
+	}()
+	go func() {
+		err := peer3.Start()
+		if err != nil {
+			log.Fatalf("Error starting peer3: %v", err)
+		}
+	}()
+
+	// Wait for peers to start
+	time.Sleep(time.Second)
+
+	// Demonstrate a peer (peer1) requesting entry into the critical section
+	go func() {
+		// Simulate some activity before requesting entry
+		time.Sleep(time.Second)
+
+		// Peer 1 requests entry into the critical section
+		peer1.RequestEntry()
+	}()
+
+	// Wait for the demonstration to complete
+	time.Sleep(3 * time.Second)
+
+	// Simulate other peers (peer2 and peer3) requesting entry while peer1 is in the critical section
+	go func() {
+		// Simulate some activity before requesting entry
+		time.Sleep(time.Second)
+
+		// Peer 2 requests entry into the critical section
+		peer2.RequestEntry()
+	}()
+
+	go func() {
+		// Simulate some activity before requesting entry
+		time.Sleep(2 * time.Second)
+
+		// Peer 3 requests entry into the critical section
+		peer3.RequestEntry()
+	}()
+
+	// Wait for the demonstration to complete
 	for {
-
 	}
 }
