@@ -1,0 +1,13 @@
+2023/11/13 18:22:32 Port 5001 added to file
+2023/11/13 18:22:32 Peer 5001 has no peers to connect to
+2023/11/13 18:22:32 Port 5002 added to file
+2023/11/13 18:22:32 Peer 5002 is connecting to peer 5001
+2023/11/13 18:22:32 Peer 5001 is connecting to peer 5002
+2023/11/13 18:22:32 Peer 5001 noticed that Peer 5002 joined @ lamport time 3
+2023/11/13 18:22:32 Port 5003 added to file
+2023/11/13 18:22:32 Peer 5003 is connecting to peer 5001
+2023/11/13 18:22:32 Peer 5003 is connecting to peer 5002
+2023/11/13 18:22:32 Peer 5001 is connecting to peer 5003
+2023/11/13 18:22:32 Peer 5001 noticed that Peer 5003 joined @ lamport time 4
+2023/11/13 18:22:32 Peer 5002 is connecting to peer 5003
+2023/11/13 18:22:32 Peer 5002 noticed that Peer 5003 joined @ lamport time 5

@@ -29,16 +29,24 @@ type Peer struct {
 	peerList         map[string]MeService.MeServiceClient
 	PortList         []string
 }
+type MeServiceServer struct {
+	MeService.UnimplementedMeServiceServer
+	Peer *Peer
+}
 
 // NewPeer creates a new instance of the Peer struct.
 func NewPeer(port string) *Peer {
-	return &Peer{
-		port:             port,
-		lamportClock:     1,
-		allowedTimestamp: 1,
-		state:            0,
-		peerList:         make(map[string]MeService.MeServiceClient),
+	meServer := &MeServiceServer{
+		Peer: &Peer{
+			port:             port,
+			lamportClock:     1,
+			allowedTimestamp: 1,
+			state:            0,
+			peerList:         make(map[string]MeService.MeServiceClient),
+		},
 	}
+	meServer.Peer.meServer = meServer
+	return meServer.Peer
 }
 
 // Server methods
@@ -65,7 +73,12 @@ func (p *Peer) sendConnectionStatus(isJoin bool) {
 	}
 }
 
-func (p *Peer) ConnectionStatus(ctx context.Context, inComming *MeService.ConnectionMsg) (*MeService.Message, error) {
+func (s *MeServiceServer) ConnectionStatus(ctx context.Context, inComming *MeService.ConnectionMsg) (*MeService.Message, error) {
+	p := s.Peer
+	if p == nil {
+		// Handle the case when Peer is nil
+		return nil, fmt.Errorf("Peer is nil")
+	}
 	if inComming.IsJoin == true {
 		err := p.connect(inComming.GetPort())
 		if err != nil {
@@ -273,7 +286,8 @@ func (p *Peer) MakeRequest() {
 }
 
 // RequestEntry This is the server part of the peer, where it handles how to return the actual rpc method
-func (p *Peer) RequestEntry(ctx context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
+func (s *MeServiceServer) RequestEntry(ctx context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
+	p := s.Peer
 	if p.state == 2 || (p.state == 1 && p.allowedTimestamp < entryRequest.Timestamp) ||
 		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
 
