@@ -16,10 +16,9 @@ import (
 )
 
 type Peer struct {
-	MeService.UnimplementedMeServiceServer
 	port         string
+	meServer     MeService.MeServiceServer
 	server       *grpc.Server
-	client       MeService.MeServiceClient
 	lamportClock int64
 
 	// Is the value of the timestamp sent with an entryRequest
@@ -85,7 +84,7 @@ func (p *Peer) ConnectionStatus(ctx context.Context, inComming *MeService.Connec
 		log.Printf("Peer %s noticed that Peer %s joined @ lamport time %d", p.port, inComming.GetPort(), p.lamportClock)
 		return p.returnMessage(), fmt.Errorf("")
 
-	} else if inComming.IsJoin == false {
+	} else {
 		//TODO Address that peer logs the time of notis and not the time of the actual leave msg
 
 		delete(p.peerList, inComming.GetPort())
@@ -93,7 +92,7 @@ func (p *Peer) ConnectionStatus(ctx context.Context, inComming *MeService.Connec
 		log.Printf("Peer %s noticed that Peer %s left @ lamport time %d", p.port, inComming.GetPort(), p.lamportClock)
 		return nil, err
 	}
-	return
+
 }
 
 func (p *Peer) leave() {
@@ -245,7 +244,7 @@ func (p *Peer) Start() error {
 
 	// Create new server
 	p.server = grpc.NewServer()
-	MeService.RegisterMeServiceServer(p.server, p.UnimplementedMeServiceServer)
+	MeService.RegisterMeServiceServer(p.server, p.meServer)
 
 	// Start server
 	go func() {
@@ -267,21 +266,18 @@ func (p *Peer) Start() error {
 }
 
 func (p *Peer) StartClient() error {
-	//Setting up the peers client
-	conn, err := grpc.Dial(":"+p.port, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("could not connect to peer on port %s: %v", p.port, err)
-	}
-	p.client = MeService.NewMeServiceClient(conn)
-
 	// Connect to all peers
-	for i := 0; i < len(p.PortList); i++ {
-		err := p.connect(p.PortList[i])
-		if err != nil {
-			return err
+	if len(p.PortList) != 0 {
+		for i := 0; i < len(p.PortList); i++ {
+			err := p.connect(p.PortList[i])
+			if err != nil {
+				return err
+			}
 		}
+		p.sendConnectionStatus(true)
+		return nil
 	}
-	p.sendConnectionStatus(true)
+	log.Printf("Peer %s has no peers to connect to", p.port)
 	return nil
 }
 
@@ -408,20 +404,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error starting peer3: %v", err)
 	}
-
-	time.Sleep(2)
-
-	peer1.MakeRequest()
-	time.Sleep(1)
-	peer2.MakeRequest()
-	time.Sleep(1)
-	peer3.MakeRequest()
-	time.Sleep(1)
-	peer1.leave()
-	time.Sleep(1)
-	peer2.leave()
-	time.Sleep(1)
-	peer3.leave()
 
 	// Wait for the demonstration to complete
 	for {
