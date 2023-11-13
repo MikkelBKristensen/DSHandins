@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,34 +35,65 @@ type Peer struct {
 }
 
 func NewPeer(port string) *Peer {
-	return &Peer{port: port}
+	return &Peer{
+		port:             port,
+		lamportClock:     1,
+		allowedTimestamp: 1,
+		state:            0,
+		peerList:         make(map[string]MeService.MeServiceClient),
+	}
 }
 
 func (p *Peer) sendConnectionStatus(isJoin bool) {
 	//Status: false for leave message and true for join message
+	p.lamportClock++
 
-	// create a new connectionMsg
 	connectionMsg := MeService.ConnectionMsg{
-		Port:   p.port,
-		IsJoin: isJoin,
+		Port:      p.port,
+		IsJoin:    isJoin,
+		Timestamp: p.lamportClock,
 	}
+
 	// Send connectionMSG to all peers
-	for i := 0; i < len(p.peerList); i++ {
-		_, err := p.peerList[strconv.Itoa(i)].ConnectionStatus(context.Background(), &connectionMsg)
-		if err != nil {
-			log.Fatalf("Could not send connection status to peer on port %s: %v", p.PortList[i], err)
+	if len(p.peerList) != 0 {
+		//Send connection status to all peers by iterating over map
+
+		for k := range p.peerList {
+			target := p.peerList[k]
+			response, err := target.ConnectionStatus(context.Background(), &connectionMsg)
+			if err != nil {
+				log.Fatalf("Peer %s Could not send connection status to peer on port %s: %v", p.port, k, err)
+			}
+
+			p.pickMaxAndUpdateClock(response.Timestamp)
 		}
 	}
+
 }
 
-func (p *Peer) receiveConnectionStatus(message *MeService.ConnectionMsg) {
+func (p *Peer) ConnectionStatus(ctx context.Context, inComming *MeService.ConnectionMsg) (msg *MeService.Message, err error) {
 	// TODO Update clock
 
-	if message.IsJoin == true {
-		p.connect(message.GetPort())
-	} else if message.IsJoin == false {
-		delete(p.peerList, message.GetPort())
+	if inComming.IsJoin == true {
+
+		err := p.connect(inComming.GetPort())
+		if err != nil {
+			return nil, fmt.Errorf("Peer %s could not connect to peer port %s", p.port, inComming.Port)
+		}
+		p.pickMaxAndUpdateClock(inComming.Timestamp)
+
+		log.Printf("Peer %s noticed that Peer %s joined @ lamport time %d", p.port, inComming.GetPort(), p.lamportClock)
+		return p.returnMessage(), fmt.Errorf("")
+
+	} else if inComming.IsJoin == false {
+		//TODO Address that peer logs the time of notis and not the time of the actual leave msg
+
+		delete(p.peerList, inComming.GetPort())
+		p.pickMaxAndUpdateClock(inComming.Timestamp)
+		log.Printf("Peer %s noticed that Peer %s left @ lamport time %d", p.port, inComming.GetPort(), p.lamportClock)
+		return nil, err
 	}
+	return
 }
 
 func (p *Peer) leave() {
@@ -191,6 +221,7 @@ func (p *Peer) updatePortList() (err error) {
 
 func (p *Peer) connect(port string) (err error) {
 	//Connect to peers
+	log.Printf("Peer %s is connecting to peer %s", p.port, port)
 	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("could not connect to peer on port %s: %v", port, err)
@@ -222,13 +253,27 @@ func (p *Peer) Start() error {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
-	p.updatePortList()
-	p.StartClient()
+	err = p.updatePortList()
+	if err != nil {
+		return err
+	}
+
+	err = p.StartClient()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (p *Peer) StartClient() error {
+	//Setting up the peers client
+	conn, err := grpc.Dial(":"+p.port, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("could not connect to peer on port %s: %v", p.port, err)
+	}
+	p.client = MeService.NewMeServiceClient(conn)
+
 	// Connect to all peers
 	for i := 0; i < len(p.PortList); i++ {
 		err := p.connect(p.PortList[i])
@@ -270,6 +315,7 @@ func (p *Peer) MakeRequest() {
 
 	// Enter critical section
 	p.enterCriticalSection()
+	// Leave critical section
 	p.leaveCriticalSection()
 }
 
@@ -284,38 +330,32 @@ func (p *Peer) RequestEntry(ctx context.Context, entryRequest *MeService.Message
 
 		// Infinite loop while waiting for the critical section to be released
 		for p.state == 2 {
-
 		}
 
-		return &MeService.Message{
-			Timestamp: p.lamportClock,
-			NodeId:    p.port,
-		}, nil
+		return p.returnMessage(), nil
 
 	} else if (p.state == 1 && entryRequest.Timestamp < p.allowedTimestamp) ||
 		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
 
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
 
-		return &MeService.Message{
-			Timestamp: p.lamportClock,
-			NodeId:    p.port,
-		}, nil
+		return p.returnMessage(), nil
 
 	} else {
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-		return &MeService.Message{
-			Timestamp: p.lamportClock,
-			NodeId:    p.port,
-		}, nil
+		return p.returnMessage(), nil
 	}
 }
-
+func (p *Peer) returnMessage() *MeService.Message {
+	return &MeService.Message{
+		Timestamp: p.lamportClock,
+		NodeId:    p.port,
+	}
+}
 func (p *Peer) pickMaxAndUpdateClock(requestTimeStamp int64) {
-	p.lamportClock = max(p.lamportClock, requestTimeStamp)
+	p.lamportClock = maxL(p.lamportClock, requestTimeStamp)
 	p.lamportClock++
 }
-
 func (p *Peer) enterCriticalSection() {
 	p.lamportClock++
 	p.state = 2
@@ -324,14 +364,12 @@ func (p *Peer) enterCriticalSection() {
 	// wait 5 seconds before leaving
 	time.Sleep(5 * time.Second)
 }
-
 func (p *Peer) leaveCriticalSection() {
 	p.lamportClock++
 	p.state = 0
 	log.Printf("Peer %s leaves critical section at lamport time %d", p.port, p.lamportClock)
 }
-
-func max(a, b int64) int64 {
+func maxL(a, b int64) int64 {
 	if a > b {
 		return a
 	}
@@ -358,24 +396,32 @@ func main() {
 	peer3 := NewPeer("5003")
 
 	// Start peers
-	go func() {
-		err := peer1.Start()
-		if err != nil {
-			log.Fatalf("Error starting peer1: %v", err)
-		}
-	}()
-	go func() {
-		err := peer2.Start()
-		if err != nil {
-			log.Fatalf("Error starting peer2: %v", err)
-		}
-	}()
-	go func() {
-		err := peer3.Start()
-		if err != nil {
-			log.Fatalf("Error starting peer3: %v", err)
-		}
-	}()
+	err = peer1.Start()
+	if err != nil {
+		log.Fatalf("Error starting peer1: %v", err)
+	}
+	err = peer2.Start()
+	if err != nil {
+		log.Fatalf("Error starting peer2: %v", err)
+	}
+	err = peer3.Start()
+	if err != nil {
+		log.Fatalf("Error starting peer3: %v", err)
+	}
+
+	time.Sleep(2)
+
+	peer1.MakeRequest()
+	time.Sleep(1)
+	peer2.MakeRequest()
+	time.Sleep(1)
+	peer3.MakeRequest()
+	time.Sleep(1)
+	peer1.leave()
+	time.Sleep(1)
+	peer2.leave()
+	time.Sleep(1)
+	peer3.leave()
 
 	// Wait for the demonstration to complete
 	for {
