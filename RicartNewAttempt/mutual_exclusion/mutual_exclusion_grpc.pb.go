@@ -6,7 +6,7 @@
 // - protoc             v4.24.4
 // source: mutual_exclusion/mutual_exclusion.proto
 
-package MeService
+package mutual_exclusion
 
 import (
 	context "context"
