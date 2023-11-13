@@ -223,7 +223,6 @@ func (p *Peer) Start() error {
 		}
 	}()
 	p.updatePortList()
-	p.updateFile()
 	p.StartClient()
 
 	return nil
