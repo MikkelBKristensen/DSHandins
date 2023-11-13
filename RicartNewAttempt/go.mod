@@ -1,3 +1,3 @@
-module github.com/MikkelBKristensen/DSHandins/tree/NewAttempt/RicartNewAttempt
+module github.com/MikkelBKristensen/DSHandins/NewAttempt/RicartNewAttempt
 
 go 1.21.3
