@@ -40,17 +40,19 @@ func NewPeer(port string) *Peer {
 }
 
 func (p *Peer) sendConnectionStatus(isJoin bool) {
-	//Status: false for leaving and true for joining
+	//Status: false for leave message and true for join message
 
 	// create a new connectionMsg
 	connectionMsg := MeService.ConnectionMsg{
 		Port:   p.port,
 		IsJoin: isJoin,
 	}
-
 	// Send connectionMSG to all peers
 	for i := 0; i < len(p.peerList); i++ {
-		p.peerList[strconv.Itoa(i)].ConnectionStatus(context.Background(), &connectionMsg)
+		_, err := p.peerList[strconv.Itoa(i)].ConnectionStatus(context.Background(), &connectionMsg)
+		if err != nil {
+			log.Fatalf("Could not send connection status to peer on port %s: %v", p.PortList[i], err)
+		}
 	}
 }
 
@@ -291,8 +293,9 @@ func (p *Peer) RequestEntry(ctx context.Context, entryRequest *MeService.Message
 			NodeId:    p.port,
 		}, nil
 
-	} else if (p.state == 1 && entryRequest.Timestamp < p.allowedTimestamp) || (p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
-		
+	} else if (p.state == 1 && entryRequest.Timestamp < p.allowedTimestamp) ||
+		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
+
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
 
 		return &MeService.Message{
