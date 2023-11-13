@@ -1,6 +1,6 @@
-module github.com/MikkelBKristensen/DSHandins/go get -u google.golang.org/grpcChittyChat_service
+module github.com/MikkelBKristensen/DSHandins/MutualExclusion
 
-go 1.21.0
+go 1.21.3
 
 require (
 	google.golang.org/grpc v1.59.0

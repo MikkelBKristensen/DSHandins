@@ -1,7 +1,23 @@
 syntax = "proto3";
 
-option go_package = "/";
+option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/Main/MutualExclusion/MeService";
+
+package MeService;
 
 service MeService {
-  
+  rpc ConnectionStatus (ConnectionMsg) returns (Message);
+  rpc RequestEntry (Message) returns (Message);
 }
+
+message Message {
+  int64 timestamp = 1;
+  string nodeId = 2;
+}
+
+message ConnectionMsg {
+  string port = 1;
+  bool isJoin = 2;
+  int64 timestamp = 3;
+}
+
+message Empty {}
