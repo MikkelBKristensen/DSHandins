@@ -1,6 +1,8 @@
 // mutual_exclusion.proto
 syntax = "proto3";
 
+option go_package = "github.com/MikkelBKristensen/DSHandins/Tree/NewAttempt/MutualExclusion/MeService";
+
 package mutual_exclusion;
 
 service MutualExclusion {
