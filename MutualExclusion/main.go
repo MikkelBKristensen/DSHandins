@@ -275,10 +275,10 @@ func (p *Peer) MakeRequest() {
 // RequestEntry This is the server part of the peer, where it handles how to return the actual rpc method
 func (p *Peer) RequestEntry(ctx context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
 
-	if p.state == 2 || (p.state == 1 && p.allowedTimestamp < entryRequest.Timestamp) || (p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
-		// TODO Extract following two lines to method
-		p.lamportClock = max(p.lamportClock, entryRequest.Timestamp)
-		p.lamportClock++
+	if p.state == 2 || (p.state == 1 && p.allowedTimestamp < entryRequest.Timestamp) ||
+		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
+
+		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
 		p.pendingRequests = append(p.pendingRequests, entryRequest)
 
 		// Infinite loop while waiting for the critical section to be released
@@ -292,22 +292,26 @@ func (p *Peer) RequestEntry(ctx context.Context, entryRequest *MeService.Message
 		}, nil
 
 	} else if (p.state == 1 && entryRequest.Timestamp < p.allowedTimestamp) || (p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
-		// TODO Extract following two lines to method
-		p.lamportClock = max(p.lamportClock, entryRequest.Timestamp)
-		p.lamportClock++
+		
+		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
+
 		return &MeService.Message{
 			Timestamp: p.lamportClock,
 			NodeId:    p.port,
 		}, nil
 
 	} else {
-		p.lamportClock = max(p.lamportClock, entryRequest.Timestamp)
-		p.lamportClock++
+		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
 		return &MeService.Message{
 			Timestamp: p.lamportClock,
 			NodeId:    p.port,
 		}, nil
 	}
+}
+
+func (p *Peer) pickMaxAndUpdateClock(requestTimeStamp int64) {
+	p.lamportClock = max(p.lamportClock, requestTimeStamp)
+	p.lamportClock++
 }
 
 func (p *Peer) enterCriticalSection() {
