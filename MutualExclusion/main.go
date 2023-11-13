@@ -25,7 +25,6 @@ type Peer struct {
 	lamportClock     int64
 	allowedTimestamp int64
 	state            int
-	pendingRequests  []*MeService.Message
 	peerList         map[string]MeService.MeServiceClient
 	PortList         []string
 }
@@ -268,16 +267,18 @@ func (p *Peer) MakeRequest() {
 	p.allowedTimestamp = p.lamportClock
 
 	var wg sync.WaitGroup
-
+	log.Printf("Peer %s is requesting entry @ lamport time %d", p.port, p.lamportClock)
 	for _, client := range p.peerList {
 		wg.Add(1)
 		go func(client MeService.MeServiceClient) {
 			defer wg.Done()
-			_, _ = client.RequestEntry(context.Background(), &MeService.Message{
+			response, _ := client.RequestEntry(context.Background(), &MeService.Message{
 				Timestamp: p.lamportClock,
 				NodeId:    p.port,
 			})
+			p.pickMaxAndUpdateClock(response.Timestamp)
 		}(client)
+
 	}
 
 	wg.Wait()
@@ -292,10 +293,15 @@ func (s *MeServiceServer) RequestEntry(ctx context.Context, entryRequest *MeServ
 		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
 
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-		p.pendingRequests = append(p.pendingRequests, entryRequest)
+
+		log.Printf("Peer %s received request from peer %s while being in critical section @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 
 		for p.state == 2 {
+
 		}
+
+		p.lamportClock++
+		log.Printf("Peer %s finished critical section and will now send response to any pending requests @ lamport time %d", p.port, p.lamportClock)
 
 		return p.returnMessage(), nil
 
@@ -334,7 +340,6 @@ func (p *Peer) enterCriticalSection() {
 func (p *Peer) leaveCriticalSection() {
 	p.lamportClock++
 	p.state = 0
-	log.Printf("Peer %s leaves critical section at lamport time %d", p.port, p.lamportClock)
 }
 
 func maxL(a, b int64) int64 {
@@ -374,6 +379,12 @@ func main() {
 		_ = fmt.Errorf("error starting peer1: %v", err)
 	}
 
-	for {
-	}
+	go peer1.MakeRequest()
+	time.Sleep(2 * time.Second)
+	go peer2.MakeRequest()
+
+	time.Sleep(20 * time.Second)
+	peerPortFile := "PeerPorts.txt"
+	// truncate file
+	err = os.Truncate(peerPortFile, 0)
 }
