@@ -319,7 +319,7 @@ func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeServic
 		}
 
 		p.lamportClock++
-		log.Printf("Peer %s finished critical section and will now send response to any pending requests @ lamport time %d", p.port, p.lamportClock)
+		log.Printf("Peer %s finished critical section and will now send responds to any pending requests @ lamport time %d", p.port, p.lamportClock)
 
 		return p.returnMessage(), nil
 
@@ -327,12 +327,12 @@ func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeServic
 		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
 
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-		log.Printf("Peer %s responsed to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
+		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 		return p.returnMessage(), nil
 
 	} else {
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-		log.Printf("Peer %s responsded to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
+		log.Printf("Peer %s responsds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 		return p.returnMessage(), nil
 	}
 }
