@@ -280,10 +280,14 @@ func (p *Peer) StartServer() error {
 // MakeRequest This is the Client part of the peer, where it sends requests
 func (p *Peer) MakeRequest() {
 	p.state = 1
-	p.lamportClock = p.lamportClock + (int64(len(p.peerList)))
+	//p.lamportClock = p.lamportClock + (int64(len(p.peerList)))
+	p.lamportClock++
 	p.allowedTimestamp = p.lamportClock
+	// create an array that holds responses
+	var responseArray []*MeService.Message = make([]*MeService.Message, len(p.peerList))
 
 	var wg sync.WaitGroup
+
 	log.Printf("Peer %s is requesting entry @ lamport time %d", p.port, p.lamportClock)
 	for _, client := range p.peerList {
 		wg.Add(1)
@@ -293,6 +297,7 @@ func (p *Peer) MakeRequest() {
 				Timestamp: p.lamportClock,
 				NodeId:    p.port,
 			})
+			responseArray = append(responseArray, response)
 			p.pickMaxAndUpdateClock(response.Timestamp)
 		}(client)
 
@@ -311,15 +316,14 @@ func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeServic
 
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
 
-		log.Printf("Peer %s received request from peer %s while being in critical section @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
+		log.Printf("Peer %s received request from peer %s but has priority and queues request @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 
 		for p.state == 2 {
-			fmt.Printf("Peer %s is currently in the critical section\n", p.port)
-		}
-		fmt.Printf("Peer %s is no longer in the critical section\n", p.port)
 
+		}
+		fmt.Println(p.port, p.state)
 		p.lamportClock++
-		log.Printf("Peer %s finished critical section and will now send responds to any pending requests @ lamport time %d", p.port, p.lamportClock)
+		// log.Printf("Peer %s finished critical section and will now send responds to any pending requests @ lamport time %d", p.port, p.lamportClock)
 
 		return p.returnMessage(), nil
 
@@ -361,6 +365,7 @@ func (p *Peer) enterCriticalSection() {
 func (p *Peer) leaveCriticalSection() {
 	p.lamportClock++
 	p.state = 0
+	log.Printf("Peer %s leaves critical section at lamport time %d", p.port, p.lamportClock)
 }
 
 func maxL(a, b int64) int64 {
@@ -408,9 +413,7 @@ func main() {
 	time.Sleep(2 * time.Second)
 	go peer3.MakeRequest()
 
-	for {
-
-	}
+	time.Sleep(25 * time.Second)
 	peerPortFile := "PeerPorts.txt"
 	// truncate file
 	err = os.Truncate(peerPortFile, 0)
