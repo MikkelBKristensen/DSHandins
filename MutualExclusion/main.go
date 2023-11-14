@@ -51,7 +51,6 @@ func NewPeer(port string) *Peer {
 // Server methods
 
 func (p *Peer) sendConnectionStatus(isJoin bool) {
-	p.lamportClock++
 
 	connectionMsg := MeService.ConnectionMsg{
 		Port:      p.port,
@@ -281,7 +280,7 @@ func (p *Peer) StartServer() error {
 // MakeRequest This is the Client part of the peer, where it sends requests
 func (p *Peer) MakeRequest() {
 	p.state = 1
-	p.lamportClock++
+	p.lamportClock = p.lamportClock + (int64(len(p.peerList)))
 	p.allowedTimestamp = p.lamportClock
 
 	var wg sync.WaitGroup
@@ -315,8 +314,9 @@ func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeServic
 		log.Printf("Peer %s received request from peer %s while being in critical section @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 
 		for p.state == 2 {
-
+			fmt.Printf("Peer %s is currently in the critical section\n", p.port)
 		}
+		fmt.Printf("Peer %s is no longer in the critical section\n", p.port)
 
 		p.lamportClock++
 		log.Printf("Peer %s finished critical section and will now send responds to any pending requests @ lamport time %d", p.port, p.lamportClock)
@@ -327,11 +327,13 @@ func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeServic
 		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
 
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
+		p.lamportClock++
 		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 		return p.returnMessage(), nil
 
 	} else {
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
+		p.lamportClock++
 		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 		return p.returnMessage(), nil
 	}
@@ -398,11 +400,17 @@ func main() {
 		_ = fmt.Errorf("error starting peer1: %v", err)
 	}
 
+	time.Sleep(2 * time.Second)
+
 	go peer1.MakeRequest()
 	time.Sleep(2 * time.Second)
 	go peer2.MakeRequest()
+	time.Sleep(2 * time.Second)
+	go peer3.MakeRequest()
 
-	time.Sleep(20 * time.Second)
+	for {
+
+	}
 	peerPortFile := "PeerPorts.txt"
 	// truncate file
 	err = os.Truncate(peerPortFile, 0)
