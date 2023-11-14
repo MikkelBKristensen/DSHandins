@@ -1,0 +1,20 @@
+2023/11/13 18:57:29 Port 5001 added to file
+2023/11/13 18:57:29 Peer 5001 has no peers to connect to
+2023/11/13 18:57:29 Port 5002 added to file
+2023/11/13 18:57:29 Peer 5002 is connecting to peer 5001
+2023/11/13 18:57:29 Peer 5001 is connecting to peer 5002
+2023/11/13 18:57:29 Peer 5001 noticed that Peer 5002 joined @ lamport time 3
+2023/11/13 18:57:29 Port 5003 added to file
+2023/11/13 18:57:29 Peer 5003 is connecting to peer 5001
+2023/11/13 18:57:29 Peer 5003 is connecting to peer 5002
+2023/11/13 18:57:29 Peer 5001 is connecting to peer 5003
+2023/11/13 18:57:29 Peer 5001 noticed that Peer 5003 joined @ lamport time 4
+2023/11/13 18:57:29 Peer 5002 is connecting to peer 5003
+2023/11/13 18:57:29 Peer 5002 noticed that Peer 5003 joined @ lamport time 5
+2023/11/13 18:57:29 Peer 5001 is requesting entry @ lamport time 5
+2023/11/13 18:57:29 Peer 5001 enters critical section at lamport time 9
+2023/11/13 18:57:31 Peer 5002 is requesting entry @ lamport time 7
+2023/11/13 18:57:31 Peer 5001 received request from peer 5002 while being in critical section @ lamport time 10
+2023/11/13 18:57:34 Peer 5001 finished critical section and will now send response to pending requests @ lamport time 12
+2023/11/13 18:57:34 Peer 5002 enters critical section at lamport time 14
+2023/11/13 18:57:39 Peer 5002 leaves critical section at lamport time 15
