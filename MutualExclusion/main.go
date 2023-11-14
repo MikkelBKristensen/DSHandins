@@ -51,7 +51,6 @@ func NewPeer(port string) *Peer {
 // Server methods
 
 func (p *Peer) sendConnectionStatus(isJoin bool) {
-	p.lamportClock++
 
 	connectionMsg := MeService.ConnectionMsg{
 		Port:      p.port,
@@ -72,34 +71,26 @@ func (p *Peer) sendConnectionStatus(isJoin bool) {
 	}
 }
 
-func (s *MeServiceServer) ConnectionStatus(ctx context.Context, inComming *MeService.ConnectionMsg) (*MeService.Message, error) {
+func (s *MeServiceServer) ConnectionStatus(_ context.Context, inComing *MeService.ConnectionMsg) (*MeService.Message, error) {
 	p := s.Peer
 	if p == nil {
 		// Handle the case when Peer is nil
-		return nil, fmt.Errorf("Peer is nil")
+		return nil, fmt.Errorf("peer is nil")
 	}
-	if inComming.IsJoin == true {
-		err := p.connect(inComming.GetPort())
+	if inComing.IsJoin == true {
+		err := p.connect(inComing.GetPort())
 		if err != nil {
-			return nil, fmt.Errorf("Peer %s could not connect to peer port %s", p.port, inComming.Port)
+			return nil, fmt.Errorf("peer %s could not connect to peer port %s", p.port, inComing.Port)
 		}
-		p.pickMaxAndUpdateClock(inComming.Timestamp)
+		p.pickMaxAndUpdateClock(inComing.Timestamp)
 
-		log.Printf("Peer %s noticed that Peer %s joined @ lamport time %d", p.port, inComming.GetPort(), p.lamportClock)
+		log.Printf("Peer %s noticed that Peer %s joined @ lamport time %d", p.port, inComing.GetPort(), p.lamportClock)
 		return p.returnMessage(), nil
 	} else {
-		delete(p.peerList, inComming.GetPort())
-		p.pickMaxAndUpdateClock(inComming.Timestamp)
-		log.Printf("Peer %s noticed that Peer %s left @ lamport time %d", p.port, inComming.GetPort(), p.lamportClock)
+		delete(p.peerList, inComing.GetPort())
+		p.pickMaxAndUpdateClock(inComing.Timestamp)
+		log.Printf("Peer %s noticed that Peer %s left @ lamport time %d", p.port, inComing.GetPort(), p.lamportClock)
 		return nil, nil
-	}
-}
-
-func (p *Peer) leave() {
-	p.sendConnectionStatus(false)
-	err := p.deleteOwnPortFromFile("PeerPorts.txt")
-	if err != nil {
-		return
 	}
 }
 
@@ -110,7 +101,12 @@ func readFile(fileName string) ([]string, error) {
 	if err != nil {
 		log.Panicf("Could not read from data from file: %s", err)
 	}
-	defer peerPortFile.Close()
+	defer func(peerPortFile *os.File) {
+		err := peerPortFile.Close()
+		if err != nil {
+			_ = fmt.Errorf("error closing file: %v", err)
+		}
+	}(peerPortFile)
 
 	var peerPortArray []string
 	scanner := bufio.NewScanner(peerPortFile)
@@ -131,7 +127,12 @@ func (p *Peer) updateFile(fileName string) {
 	if err != nil {
 		log.Panicf("Could not open file: %s", err)
 	}
-	defer peerPortFile.Close()
+	defer func(peerPortFile *os.File) {
+		err := peerPortFile.Close()
+		if err != nil {
+			_ = fmt.Errorf("error closing file: %v", err)
+		}
+	}(peerPortFile)
 
 	if _, err := peerPortFile.WriteString(p.port + "\n"); err != nil {
 		log.Fatalf("Could not add Port: %s to file", p.port)
@@ -144,7 +145,12 @@ func (p *Peer) deleteOwnPortFromFile(fileName string) error {
 	if err != nil {
 		log.Panicf("Could not open file: %s", err)
 	}
-	defer peerPortFile.Close()
+	defer func(peerPortFile *os.File) {
+		err := peerPortFile.Close()
+		if err != nil {
+			_ = fmt.Errorf("error closing file: %v", err)
+		}
+	}(peerPortFile)
 
 	var stringsArray []string
 	scanner := bufio.NewScanner(peerPortFile)
@@ -169,7 +175,10 @@ func (p *Peer) deleteOwnPortFromFile(fileName string) error {
 
 	writer := bufio.NewWriter(peerPortFile)
 	for _, line := range stringsArray {
-		fmt.Fprintln(writer, line)
+		_, err := fmt.Fprintln(writer, line)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := writer.Flush(); err != nil {
@@ -201,6 +210,14 @@ func (p *Peer) connect(port string) (err error) {
 
 	p.peerList[port] = MeService.NewMeServiceClient(conn)
 	return nil
+}
+
+func (p *Peer) leave() {
+	p.sendConnectionStatus(false)
+	err := p.deleteOwnPortFromFile("PeerPorts.txt")
+	if err != nil {
+		return
+	}
 }
 
 func (p *Peer) Start() error {
@@ -263,10 +280,14 @@ func (p *Peer) StartServer() error {
 // MakeRequest This is the Client part of the peer, where it sends requests
 func (p *Peer) MakeRequest() {
 	p.state = 1
+	//p.lamportClock = p.lamportClock + (int64(len(p.peerList)))
 	p.lamportClock++
 	p.allowedTimestamp = p.lamportClock
+	// create an array that holds responses
+	var responseArray []*MeService.Message = make([]*MeService.Message, len(p.peerList))
 
 	var wg sync.WaitGroup
+
 	log.Printf("Peer %s is requesting entry @ lamport time %d", p.port, p.lamportClock)
 	for _, client := range p.peerList {
 		wg.Add(1)
@@ -276,6 +297,7 @@ func (p *Peer) MakeRequest() {
 				Timestamp: p.lamportClock,
 				NodeId:    p.port,
 			})
+			responseArray = append(responseArray, response)
 			p.pickMaxAndUpdateClock(response.Timestamp)
 		}(client)
 
@@ -287,21 +309,21 @@ func (p *Peer) MakeRequest() {
 }
 
 // RequestEntry This is the server part of the peer, where it handles how to return the actual rpc method
-func (s *MeServiceServer) RequestEntry(ctx context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
+func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
 	p := s.Peer
 	if p.state == 2 || (p.state == 1 && p.allowedTimestamp < entryRequest.Timestamp) ||
 		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
 
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
 
-		log.Printf("Peer %s received request from peer %s while being in critical section @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
+		log.Printf("Peer %s received request from peer %s but has priority and queues request @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 
 		for p.state == 2 {
 
 		}
-
+		fmt.Println(p.port, p.state)
 		p.lamportClock++
-		log.Printf("Peer %s finished critical section and will now send response to any pending requests @ lamport time %d", p.port, p.lamportClock)
+		// log.Printf("Peer %s finished critical section and will now send responds to any pending requests @ lamport time %d", p.port, p.lamportClock)
 
 		return p.returnMessage(), nil
 
@@ -309,11 +331,14 @@ func (s *MeServiceServer) RequestEntry(ctx context.Context, entryRequest *MeServ
 		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port >= entryRequest.NodeId) {
 
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-
+		p.lamportClock++
+		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 		return p.returnMessage(), nil
 
 	} else {
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
+		p.lamportClock++
+		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 		return p.returnMessage(), nil
 	}
 }
@@ -340,6 +365,7 @@ func (p *Peer) enterCriticalSection() {
 func (p *Peer) leaveCriticalSection() {
 	p.lamportClock++
 	p.state = 0
+	log.Printf("Peer %s leaves critical section at lamport time %d", p.port, p.lamportClock)
 }
 
 func maxL(a, b int64) int64 {
@@ -368,7 +394,7 @@ func main() {
 
 	err = peer1.Start()
 	if err != nil {
-		fmt.Errorf("Error starting peer1: %v", err)
+		_ = fmt.Errorf("error starting peer1: %v", err)
 	}
 	err = peer2.Start()
 	if err != nil {
@@ -379,11 +405,15 @@ func main() {
 		_ = fmt.Errorf("error starting peer1: %v", err)
 	}
 
+	time.Sleep(2 * time.Second)
+
 	go peer1.MakeRequest()
 	time.Sleep(2 * time.Second)
 	go peer2.MakeRequest()
+	time.Sleep(2 * time.Second)
+	go peer3.MakeRequest()
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(25 * time.Second)
 	peerPortFile := "PeerPorts.txt"
 	// truncate file
 	err = os.Truncate(peerPortFile, 0)
