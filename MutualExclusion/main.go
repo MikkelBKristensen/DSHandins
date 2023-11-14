@@ -332,7 +332,7 @@ func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeServic
 
 	} else {
 		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-		log.Printf("Peer %s responsds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
+		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
 		return p.returnMessage(), nil
 	}
 }
