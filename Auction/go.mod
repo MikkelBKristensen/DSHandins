@@ -1,4 +1,4 @@
-module github.com/MikkelBKristensen/DSHandins/tree/Handin5
+module Auction
 
 go 1.21.0
 

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/MikkelBKristensen/DSHandins/Auction";
+option go_package = "./";
 
 package Auction;
 
