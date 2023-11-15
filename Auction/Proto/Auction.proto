@@ -5,7 +5,7 @@ option go_package = "github.com/MikkelBKristensen/DSHandins/Auction";
 package Auction;
 
 service Auction {
-    rpc Bid(BidRequest) returns (BidResponse) {}
+    rpc Bid(stream BidRequest) returns (stream BidResponse) {}
     rpc Result(ResultRequest) returns (ResultResponse) {}
 }
 

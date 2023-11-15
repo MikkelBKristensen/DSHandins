@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option go_package = "./Consensus";
+
+package Consensus;
+
+service Consensus {
+  rpc Sync(stream ClientBid) returns (Ack);
+
+}
+
+message ClientBid {
+  string bidder = 1;
+  int32 bid = 2;
+  string status = 3;
+}
+message Ack{
+  string status = 1;
+
+}
+message Empty{
+}
