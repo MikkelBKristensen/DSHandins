@@ -29,4 +29,3 @@ message ResultResponse {
     int32 bid = 2;
     string status = 3;
 }
-```
