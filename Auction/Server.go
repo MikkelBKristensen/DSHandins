@@ -112,12 +112,21 @@ func (s *Server) ConsensusConnect(port string) error {
 }
 
 func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
+	clientBid := &Consensus.ClientBid{
+		Id:        bidReq.Id,
+		Bid:       bidReq.Bid,
+		Timestamp: bidReq.Timestamp,
+	}
 	for target := range s.BackupList {
-		response, err := s.BackupList[target].Sync(context.Background(), &Consensus.ClientBid{
-			Id:     bidReq.Id,
-			Bid:    bidReq.Bid,
-			Status: "",
-		})
+		ack, err := s.BackupList[target].Sync(context.Background(), clientBid)
+		if err != nil {
+			log.Printf("Could not sync with backup server: %v", err)
+			return err
+		}
+		if ack.Status != "0" {
+			log.Printf("Could not sync with backup server: %v", err)
+			return err
+		}
 	}
 	return nil
 }

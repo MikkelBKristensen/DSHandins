@@ -5,17 +5,16 @@ option go_package = "./Consensus";
 package Consensus;
 
 service Consensus {
-  rpc Sync(stream ClientBid) returns (Ack);
+  rpc Sync(ClientBid) returns (Ack);
 }
 
 message ClientBid {
   int32 Id = 1;
-  int32 bid = 2;
-  string status = 3;
+  int32 Bid = 2;
+  int32 Timestamp = 3;
 }
 message Ack{
   string status = 1;
-
 }
 message Empty{
 }
