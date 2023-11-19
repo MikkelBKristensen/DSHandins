@@ -6,11 +6,10 @@ package Consensus;
 
 service Consensus {
   rpc Sync(stream ClientBid) returns (Ack);
-
 }
 
 message ClientBid {
-  string bidder = 1;
+  int32 Id = 1;
   int32 bid = 2;
   string status = 3;
 }

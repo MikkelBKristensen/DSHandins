@@ -3,6 +3,7 @@ package main
 import (
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"log"
 )
 
@@ -10,6 +11,7 @@ type Client struct {
 	Id           int32
 	lamportClock int32
 	auctioneer   Auction.AuctionClient
+	Servers      []string
 }
 
 func (c *Client) sendBid(amount int32) {
@@ -51,6 +53,21 @@ func (c *Client) requestResult() {
 	//States for an auction: result || highest bid
 
 }
+
+func (c *Client) joinAuction() error {
+
+	// Connect to server and get client
+	//TODO find a way to make client connect to primary server
+	conn, err := grpc.Dial("5001", grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+
+	c.auctioneer = Auction.NewAuctionClient(conn)
+
+	return nil
+}
+
 func MaxL(a int32, b int32) int32 {
 	if a > b {
 		return a
