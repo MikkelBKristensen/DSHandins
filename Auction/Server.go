@@ -116,7 +116,7 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 		response, err := s.BackupList[target].Sync(context.Background(), &Consensus.ClientBid{
 			Id:     bidReq.Id,
 			Bid:    bidReq.Bid,
-			Status: bidReq.s,
+			Status: "",
 		})
 	}
 	return nil
