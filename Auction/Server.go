@@ -216,12 +216,6 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 }
 
 // =======================================Lamport clock=======================================================================
-func MaxL(a, b int32) int32 {
-	if a > b {
-		return a
-	}
-	return b
-}
 
 func (s *AuctionServer) UpdateAndIncrementClock(inComingClock int32) {
 	s.Server.lamportClock = MaxL(inComingClock, s.Server.lamportClock) + 1

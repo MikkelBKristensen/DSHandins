@@ -16,5 +16,3 @@ message ClientBid {
 message Ack{
   string status = 1;
 }
-message Empty{
-}
