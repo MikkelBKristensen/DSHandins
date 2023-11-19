@@ -5,27 +5,29 @@ option go_package = "./";
 package Auction;
 
 service Auction {
-    rpc Bid(stream BidRequest) returns (stream BidResponse) {}
+    rpc Bid(BidRequest) returns (BidResponse) {}
     rpc Result(ResultRequest) returns (ResultResponse) {}
 }
 
 message BidRequest {
-    string bidder = 1;
+    int32 Id = 1;
     int32 bid = 2;
+    int32 timestamp = 3;
 }
 
 message BidResponse {
-    string bidder = 1;
-    int32 bid = 2;
-    string status = 3;
+    string status = 1;
+    int32 timestamp = 2;
 }
 
 message ResultRequest {
-    string bidder = 1;
+    int32 Id = 1;
+    int32 timestamp = 2;
 }
 
 message ResultResponse {
-    string bidder = 1;
+    int32 id = 1;
     int32 bid = 2;
     string status = 3;
+    int32 timestamp = 4;
 }
