@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	Consensus "github.com/MikkelBKristensen/DSHandins/Auction/Consensus"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
 	"google.golang.org/grpc"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -40,7 +42,7 @@ type AuctionServer struct {
 
 // ActiveAuction This struct is used as a container to collect the relevant auction data
 type ActiveAuction struct {
-	Bidders       map[int32]bool
+	Bidders       []int32
 	HighestBid    int32
 	HighestBidder int32
 	time.Duration
@@ -140,7 +142,17 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 }
 
 func (s *ConsensusServer) Sync(_ context.Context, clientBid *Consensus.ClientBid) (ack *Consensus.Ack, err error) {
-	return nil, err
+
+	//TODO Check if the bidder is registered
+
+	//TODO Update the highest bid and bidder, sync, send success response
+	//TODO Send Sync with replica servers
+	//TODO Send ack
+	//TODO Send result to client
+	//TODO Send result to backup servers
+	return &Consensus.Ack{
+		Status: "0",
+	}, nil
 }
 
 // ======================================= AUCTION PART OF THE SERVER ==================================================
@@ -173,11 +185,11 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 		//TODO Start timer here and continue - Maybe it should be its own method call
 
 		//Register bidder
-		s.Auction.Bidders[bidRequest.Id] = true
+		s.Auction.Bidders = append(s.Auction.Bidders, s.Auction.Bidders[bidRequest.Id])
 
-	} else if s.Auction.Bidders[bidRequest.Id] { // Will evaluate to false if person is not in the map
-		//If not registered, then register bidder
-		s.Auction.Bidders[bidRequest.Id] = true
+	} else if !slices.Contains(s.Auction.Bidders, bidRequest.Id) {
+		// If the bidder is not contained in the slice, add the bidder
+		s.Auction.Bidders = append(s.Auction.Bidders, s.Auction.Bidders[bidRequest.Id])
 	}
 
 	//Step 4: Validate bid
@@ -208,7 +220,7 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 }
 
 func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.ResultRequest) (resp *Auction.ResultResponse, err error) {
-	//States for an auction: result || highest bid so far
+	//States for an auction: result || the highest bid so far
 
 	status := ""
 	if !s.Auction.isActive {
@@ -226,6 +238,42 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 	}
 
 	return resp, nil
+}
+
+func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) (bool, error) {
+	//Step 2: Is auction still active
+	if !s.Auction.isActive {
+		err := errors.New("auction is not active")
+		return false, err
+	}
+
+	//Step 3: Check if the bidder is registered
+	//If there are no other bidders, start Auction timer
+	if len(s.Auction.Bidders) == 0 {
+
+		// Initiate auction
+		s.Auction.isActive = true
+		//TODO Start timer here and continue - Maybe it should be its own method call
+
+		//Register bidder
+		s.Auction.Bidders[bidRequest.Id] = true
+
+	} else if !s.Auction.Bidders[bidRequest.Id] { // If the bidder is not in the map
+		//If not registered, then register bidder
+		s.Auction.Bidders[bidRequest.Id] = true
+	}
+
+	//Step 4: Validate bid
+	if bidRequest.Bid < s.Auction.HighestBid {
+		err := errors.New("bid is too low")
+		return false, err
+	}
+
+	//Step 5: Update the highest bid and bidder, sync, send success response
+	s.Auction.HighestBid = bidRequest.Bid
+	s.Auction.HighestBidder = bidRequest.Id
+
+	return true, nil
 }
 
 // =======================================Lamport clock=======================================================================
