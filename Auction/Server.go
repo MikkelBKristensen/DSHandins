@@ -123,9 +123,17 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 			log.Printf("Could not sync with backup server: %v", err)
 			return err
 		}
-		if ack.Status != "0" {
-			log.Printf("Could not sync with backup server: %v", err)
-			return err
+		// create switch case for ack.Status
+		switch ack.Status {
+		case "0":
+			//Success
+			log.Printf("Synced with backup server: %v", s.BackupList[target])
+		case "1":
+			//Fail
+			log.Printf("Could not sync with backup server: %v", s.BackupList[target])
+		case "2":
+			// Exception
+			log.Printf("Exception when syncing with backup server: %v", s.BackupList[target])
 		}
 	}
 	return nil
@@ -141,6 +149,7 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	// Ack : 0 = success, 1 = fail, 2 = exception
 	// 0 : bid accepted and synced between servers
 	// 1 : bid not accepted, either too low, could not sync (maybe), (auction is over?)
+	// 2 : Some exception happened, maybe timeout?
 
 	//Step 1: Sync clock, Update and increment
 	s.UpdateAndIncrementClock(bidRequest.Timestamp) //Sync clock and Increment
