@@ -5,7 +5,7 @@ option go_package = "./Consensus";
 package Consensus;
 
 service Consensus {
-  rpc Sync(ClientBid) returns (Ack);
+  rpc Sync (ClientBid) returns (Ack);
 }
 
 message ClientBid {

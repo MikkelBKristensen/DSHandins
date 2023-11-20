@@ -131,7 +131,7 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 	return nil
 }
 
-func (s *ConsensusServer) Sync(ctx context.Context, clientBid *Consensus.ClientBid) (ack *Consensus.Ack, err error) {
+func (s *ConsensusServer) Sync(_ context.Context, clientBid *Consensus.ClientBid) (ack *Consensus.Ack, err error) {
 	return nil, err
 }
 
@@ -185,6 +185,10 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	s.Auction.HighestBidder = bidRequest.Id
 
 	//TODO Send Sync with replica servers
+	err = s.Server.ConsensusServer.sendSync(bidRequest)
+	if err != nil {
+		log.Fatalf("Could not sync with backup server: %v", err)
+	}
 
 	resp = &Auction.BidResponse{
 		Status:    "0",
