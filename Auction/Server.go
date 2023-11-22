@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	Consensus "github.com/MikkelBKristensen/DSHandins/Auction/Consensus"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
 	"google.golang.org/grpc"
@@ -44,7 +45,8 @@ type ActiveAuction struct {
 	HighestBid    int32
 	HighestBidder int32
 	time.Duration
-	isActive bool
+	isActive  bool
+	isStarted bool
 }
 
 // ======================================= CENTRAL SERVER PART =========================================================
@@ -117,6 +119,9 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 		Bid:       bidReq.Bid,
 		Timestamp: bidReq.Timestamp,
 	}
+	//TODO Send result to client
+
+	//TODO Send result to backup servers
 	for target := range s.BackupList {
 		ack, err := s.BackupList[target].Sync(context.Background(), clientBid)
 		if err != nil {
@@ -130,6 +135,7 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 			log.Printf("Synced with backup server: %v", s.BackupList[target])
 		case "1":
 			//Fail
+			//TODO Handle fail - Is the server still alive?
 			log.Printf("Could not sync with backup server: %v", s.BackupList[target])
 		case "2":
 			// Exception
@@ -141,21 +147,63 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 
 func (s *ConsensusServer) Sync(_ context.Context, clientBid *Consensus.ClientBid) (ack *Consensus.Ack, err error) {
 
-	//TODO Check if the bidder is registered
-
-	//TODO Update the highest bid and bidder, sync, send success response
-
-	//TODO Send Sync with replica servers
-
-	//TODO Send ack
-
-	//TODO Send result to client
-
-	//TODO Send result to backup servers
+	s.Server.AuctionServer.Auction.HighestBid = clientBid.Bid
+	s.Server.AuctionServer.Auction.HighestBidder = clientBid.Id
 
 	return &Consensus.Ack{
 		Status: "0",
 	}, nil
+}
+
+// ======================================= CONSENSUS: FAIL DETECTION ================================================
+func (s *ConsensusServer) Ping(_ context.Context, ack *Consensus.Ack) (*Consensus.Ack, error) {
+	//Respond to ping
+	return &Consensus.Ack{
+		Status: "0",
+	}, nil
+}
+
+func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
+	ack := &Consensus.Ack{
+		Status: "4",
+	}
+	errCh := make(chan error)
+
+	for {
+		time.Sleep(5 * time.Second) // Every 5 seconds the server should ping the other servers
+
+		go func() {
+			_, err := targetServer.Ping(context.Background(), ack)
+			errCh <- err // Send the error to the channel
+		}()
+
+		// Wait for either the goroutine to complete or the timeout
+
+		select {
+		case err := <-errCh:
+			// Handle the error if needed
+			if err != nil {
+				if targetServer.Server.isPrimaryServer {
+					//TODO CAll for election
+
+				} else {
+					//TODO remove server from backuplist
+
+					for i := range s.BackupList {
+						if {
+							
+						}
+					}
+
+					log.Printf("Could not ping server: %v", targetServer.Server.Port)
+				}
+			}
+		case <-time.After(10 * time.Second):
+			// Timeout after 10 seconds
+			fmt.Println("Timeout reached, the goroutine did not complete in time.")
+		}
+	}
+
 }
 
 // ======================================= AUCTION PART OF THE SERVER ==================================================
@@ -169,8 +217,8 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	//Step 1: Sync clock, Update and increment
 	s.UpdateAndIncrementClock(bidRequest.Timestamp) //Sync clock and Increment
 
-	//Step 2: Is auction still active
-	if !s.Auction.isActive {
+	//Step 2: Is auction complete
+	if s.Auction.isStarted && !s.Auction.isActive {
 
 		resp = &Auction.BidResponse{
 			Status:    "fail",
@@ -179,17 +227,13 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 		return resp, nil
 	}
 
-	//Step 3: Check if the bidder is registered
-	//If there are no other bidders, start Auction timer
-
-	if !s.Auction.isActive {
-		//Initiate auction
-		s.Auction.isActive = true
-		//TODO Start timer here and continue - Maybe it should be its own method call
+	//Step 3: Check if auction has begun, if not then start it
+	if !s.Auction.isStarted {
+		s.StartAuction()
 	}
 
 	//Step 4: Validate bid
-	if bidRequest.Bid < s.Auction.HighestBid {
+	if bidRequest.Bid <= s.Auction.HighestBid {
 		resp = &Auction.BidResponse{
 			Status:    "fail",
 			Timestamp: s.Server.lamportClock,
@@ -208,11 +252,23 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	}
 
 	resp = &Auction.BidResponse{
-		Status:    "0",
+		Status:    "success",
 		Timestamp: s.Server.lamportClock,
 	}
 
 	return resp, nil
+}
+
+func (s *AuctionServer) StartAuction() {
+
+	//Skrive til de andre servere for at prøve at synkronisere auction clocks
+
+	//Initiate auction
+	s.Auction.isStarted = true
+	s.Auction.isActive = true
+	//TODO Start timer here and continue - Maybe it should be its own method call
+	s.startTimer()
+
 }
 
 func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.ResultRequest) (resp *Auction.ResultResponse, err error) {
@@ -220,10 +276,12 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 
 	status := ""
 	if !s.Auction.isActive {
-		status = "result"
+		status = "EndResult"
 		return resp, nil
+	} else if !s.Auction.isStarted && !s.Auction.isActive {
+		status = "NotStarted"
 	} else {
-		status = "highest bid so far"
+		status = "Result"
 	}
 
 	resp = &Auction.ResultResponse{
@@ -278,6 +336,10 @@ func (s *AuctionServer) UpdateAndIncrementClock(inComingClock int32) {
 	s.Server.lamportClock = MaxL(inComingClock, s.Server.lamportClock) + 1
 }
 
+func (s *AuctionServer) startTimer() {
+
+}
+
 func main() {
 	// Set up the log
 	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -290,5 +352,7 @@ func main() {
 	// Create and Start server
 	Server := new(Server)
 	Server.StartServer()
+
+	//TODO Initate the ping process
 
 }

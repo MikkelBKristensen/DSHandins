@@ -6,6 +6,7 @@ package Consensus;
 
 service Consensus {
   rpc Sync (ClientBid) returns (Ack);
+  rpc Ping (Ack) returns (Ack);
 }
 
 message ClientBid {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -30,16 +31,22 @@ func (c *Client) sendBid(amount int32) {
 	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
 
 	//@TODO Do something with resp here
-	// Ack : 0 = success, 1 = fail, 2 = exception
-	// 0 : bid accepted and synced between servers
-	// 1 : bid not accepted, either too low, could not sync (maybe), (auction is over?)
 
+	// succes : bid accepted and synced between servers
+	// fail : bid not accepted, either too low, could not sync (maybe), (auction is over?)
+	// exception : Some exception happened, maybe timeout?
+
+	//TODO Add log
 	switch resp.Status {
 	case "success":
+		fmt.Println("Bid was accepted")
 		return //We don't need to do anything at this point
+
 	case "fail":
+		fmt.Println("Bid was not accepted")
 
 	case "exception":
+		fmt.Println("Bid was not accepted, exception: %v", resp.Status)
 
 	default:
 		log.Fatalf("Unknown status: %v", resp.Status)
@@ -61,6 +68,15 @@ func (c *Client) requestResult() {
 	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
 
 	//@TODO Do something with resp her
+	switch resp.Status {
+	case "EndResult":
+		fmt.Printf("Auction is over, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
+
+	case "NotStarted":
+		fmt.Println("You must bid to start the auction, no bid has been placed yet.")
+	case "Result":
+		fmt.Printf("Auction is still running, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
+	}
 	//States for an auction: result || highest bid
 
 }
