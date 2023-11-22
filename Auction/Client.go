@@ -24,7 +24,7 @@ func (c *Client) sendBid(amount int32) {
 	}
 	resp, err := c.auctioneer.Bid(context.Background(), &bid)
 	if err != nil {
-		log.Fatalf("could place bid: %v", err)
+		log.Fatalf("could not place bid: %v", err)
 	}
 	//Sync clock according to response
 	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
@@ -33,6 +33,17 @@ func (c *Client) sendBid(amount int32) {
 	// Ack : 0 = success, 1 = fail, 2 = exception
 	// 0 : bid accepted and synced between servers
 	// 1 : bid not accepted, either too low, could not sync (maybe), (auction is over?)
+
+	switch resp.Status {
+	case "success":
+		return //We don't need to do anything at this point
+	case "fail":
+
+	case "exception":
+
+	default:
+		log.Fatalf("Unknown status: %v", resp.Status)
+	}
 
 }
 func (c *Client) requestResult() {

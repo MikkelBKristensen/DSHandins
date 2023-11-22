@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"slices"
 	"strconv"
 	"time"
 )
@@ -42,7 +41,6 @@ type AuctionServer struct {
 
 // ActiveAuction This struct is used as a container to collect the relevant auction data
 type ActiveAuction struct {
-	Bidders       []int32
 	HighestBid    int32
 	HighestBidder int32
 	time.Duration
@@ -146,10 +144,15 @@ func (s *ConsensusServer) Sync(_ context.Context, clientBid *Consensus.ClientBid
 	//TODO Check if the bidder is registered
 
 	//TODO Update the highest bid and bidder, sync, send success response
+
 	//TODO Send Sync with replica servers
+
 	//TODO Send ack
+
 	//TODO Send result to client
+
 	//TODO Send result to backup servers
+
 	return &Consensus.Ack{
 		Status: "0",
 	}, nil
@@ -170,7 +173,7 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	if !s.Auction.isActive {
 
 		resp = &Auction.BidResponse{
-			Status:    "1",
+			Status:    "fail",
 			Timestamp: s.Server.lamportClock,
 		}
 		return resp, nil
@@ -178,24 +181,17 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 
 	//Step 3: Check if the bidder is registered
 	//If there are no other bidders, start Auction timer
-	if len(s.Auction.Bidders) == 0 {
 
-		// Initiate auction
+	if !s.Auction.isActive {
+		//Initiate auction
 		s.Auction.isActive = true
 		//TODO Start timer here and continue - Maybe it should be its own method call
-
-		//Register bidder
-		s.Auction.Bidders = append(s.Auction.Bidders, s.Auction.Bidders[bidRequest.Id])
-
-	} else if !slices.Contains(s.Auction.Bidders, bidRequest.Id) {
-		// If the bidder is not contained in the slice, add the bidder
-		s.Auction.Bidders = append(s.Auction.Bidders, s.Auction.Bidders[bidRequest.Id])
 	}
 
 	//Step 4: Validate bid
 	if bidRequest.Bid < s.Auction.HighestBid {
 		resp = &Auction.BidResponse{
-			Status:    "1",
+			Status:    "fail",
 			Timestamp: s.Server.lamportClock,
 		}
 		return resp, nil
