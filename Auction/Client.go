@@ -9,10 +9,11 @@ import (
 )
 
 type Client struct {
-	Id           int32
-	lamportClock int32
-	auctioneer   Auction.AuctionClient
-	Servers      []string
+	Id            int32
+	lamportClock  int32
+	auctioneer    Auction.AuctionClient
+	Servers       []string
+	CurrentServer int32
 }
 
 func (c *Client) sendBid(amount int32) {
@@ -25,12 +26,12 @@ func (c *Client) sendBid(amount int32) {
 	}
 	resp, err := c.auctioneer.Bid(context.Background(), &bid)
 	if err != nil {
+		c.switchServer()
+		c.sendBid(amount)
 		log.Fatalf("could not place bid: %v", err)
 	}
 	//Sync clock according to response
 	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
-
-	//@TODO Do something with resp here
 
 	// succes : bid accepted and synced between servers
 	// fail : bid not accepted, either too low, could not sync (maybe), (auction is over?)
@@ -48,7 +49,13 @@ func (c *Client) sendBid(amount int32) {
 	case "exception":
 		fmt.Println("Bid was not accepted, exception: %v", resp.Status)
 
+		//Maybe incorporate a goroutine here, to find the lead server faster
+		c.switchServer()
+		c.sendBid(amount)
+
 	default:
+		c.switchServer()
+		c.sendBid(amount)
 		log.Fatalf("Unknown status: %v", resp.Status)
 	}
 
@@ -62,15 +69,13 @@ func (c *Client) requestResult() {
 	}
 	resp, err := c.auctioneer.Result(context.Background(), &result)
 	if err != nil {
+		c.switchServer()
+		c.requestResult()
 		log.Fatalf("could request result: %v", err)
 	}
 	//Sync clock according to response
 	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
 
-	//@TODO If the client send a bidrequest to a non leader server, and exception should be returned
-	//This should propagate the bidrequest to a new server,until the leadserver is found
-	//This should be done without the client knowing about it
-	
 	switch resp.Status {
 	case "EndResult":
 		fmt.Printf("Auction is over, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
@@ -83,17 +88,44 @@ func (c *Client) requestResult() {
 	//States for an auction: result || highest bid
 
 }
+func (c *Client) switchServer() {
+	if c.CurrentServer > (int32(len(c.Servers)))-1 {
+		c.CurrentServer++
+		err := c.connectionToServer(c.CurrentServer)
+		if err != nil {
+			log.Printf("Client %v could not connect to server on port %v: %v(switchServer)", c.Id, c.CurrentServer, err)
+		}
+	} else {
+		c.CurrentServer = 0
+		err := c.connectionToServer(c.CurrentServer)
+		if err != nil {
+			log.Printf("Client %v could not connect to server on port %v: %v(switchServer)", c.Id, c.CurrentServer, err)
+		}
+	}
+}
+func (c *Client) connectionToServer(ServerNumber int32) error {
+	//Start at 0
 
-func (c *Client) joinAuction() error {
-
-	// Connect to server and get client
-	//TODO find a way to make client connect to primary server
-	conn, err := grpc.Dial("5001", grpc.WithInsecure())
+	conn, err := grpc.Dial(c.Servers[ServerNumber], grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
 
 	c.auctioneer = Auction.NewAuctionClient(conn)
+
+	return nil
+}
+
+func (c *Client) joinAuction() error {
+
+	//hardcoded list of nodes
+	c.Servers = []string{"5001", "5002", "5003"}
+	c.CurrentServer = 0
+	// Connect to server and get client
+	err := c.connectionToServer(c.CurrentServer)
+	if err != nil {
+		log.Printf("Client %v could not connect to server on port %v: %v(joinAuction)", c.Id, c.CurrentServer, err)
+	}
 
 	return nil
 }
