@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -31,6 +33,7 @@ type ConsensusServer struct {
 	BackupList      map[string]Consensus.ConsensusClient
 	HasHadElection  bool
 	Server          *Server
+	PortList        []string
 }
 
 // AuctionServer This struct is used in the Client/Server interaction happening in the Auction service
@@ -85,7 +88,7 @@ func (s *Server) StartServer() {
 		//Try to create server on port
 		err := s.CreateServer(port)
 
-		//If fail, connect to that port
+		//If failed, connect to that port
 		if err != nil {
 			connectionError := s.
 			if connectionError != nil {
@@ -106,6 +109,43 @@ func (s *Server) StartServer() {
 
 // ======================================= CONSENSUS PART OF THE SERVER ================================================
 
+func (s *ConsensusServer) sendConnection() {
+
+	var connectionAck = &Consensus.Ack{
+		Port:   s.Server.Port,
+		Status: "0",
+	}
+
+	if len(s.BackupList) != 0 {
+		for port := range s.BackupList {
+			target := s.BackupList[port]
+			ack, err := target.ConnectStatus(context.Background(), connectionAck)
+			if err != nil {
+				log.Printf("Could not connect to backup server: %s", port)
+			}
+			if ack.Status == "1" {
+				log.Printf("Could not connect to backup server: %s", port)
+			}
+			log.Printf("Server %s connected to backup server: %s", s.Server.Port, ack.Port)
+		}
+	}
+	log.Printf("There are no backup servers to connect to")
+}
+
+func (s *ConsensusServer) ConnectionStatus(_ context.Context, inComing *Consensus.Ack) (*Consensus.Ack, error) {
+	err := s.Server.ConsensusConnect(inComing.Port)
+	if err != nil {
+		return &Consensus.Ack{
+			Status: "1",
+		}, nil
+	}
+	log.Printf("Server %s connected to backup server: %s", s.Server.Port, inComing.Port)
+	return &Consensus.Ack{
+		Port:   s.Server.Port,
+		Status: "0",
+	}, nil
+}
+
 func (s *Server) ConsensusConnect(port string) error {
 	conn, err := grpc.Dial(port, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
@@ -113,6 +153,16 @@ func (s *Server) ConsensusConnect(port string) error {
 	}
 	client := Consensus.NewConsensusClient(conn)
 	s.ConsensusServer.BackupList[port] = client
+	return nil
+}
+
+func (s *ConsensusServer) updatePortList() (err error) {
+	s.PortList, err = readFile("ServerPorts")
+	if err != nil {
+		log.Fatalf("Could not read from file: %s", err)
+	}
+	s.updateFile("ServerPorts")
+
 	return nil
 }
 
@@ -370,6 +420,95 @@ func (s *AuctionServer) UpdateAndIncrementClock(inComingClock int32) {
 
 func (s *AuctionServer) startTimer() {
 
+}
+
+// ======================================= FILE METHODS =======================================================================
+
+func readFile(fileName string) ([]string, error) {
+	peerPortFile, err := os.Open(fileName)
+	if err != nil {
+		log.Panicf("Could not read from data from file: %s", err)
+	}
+	defer func(peerPortFile *os.File) {
+		err := peerPortFile.Close()
+		if err != nil {
+			_ = fmt.Errorf("error closing file: %v", err)
+		}
+	}(peerPortFile)
+
+	var peerPortArray []string
+	scanner := bufio.NewScanner(peerPortFile)
+	for scanner.Scan() {
+		port := scanner.Text()
+		peerPortArray = append(peerPortArray, port)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return peerPortArray, nil
+}
+
+func (s *ConsensusServer) updateFile(fileName string) {
+	peerPortFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Panicf("Could not open file: %s", err)
+	}
+	defer func(peerPortFile *os.File) {
+		err := peerPortFile.Close()
+		if err != nil {
+			_ = fmt.Errorf("error closing file: %v", err)
+		}
+	}(peerPortFile)
+
+	if _, err := peerPortFile.WriteString(s.Server.Port + "\n"); err != nil {
+		log.Fatalf("Could not add Port: %s to file", s.Server.Port)
+	}
+	log.Printf("Port %s added to file", s.Server.Port)
+}
+
+func (s *ConsensusServer) deletePortFromFile(fileName string) error {
+	peerPortFile, err := os.OpenFile(fileName, os.O_RDWR, 0644)
+	if err != nil {
+		log.Panicf("Could not open file: %s", err)
+	}
+	defer func(peerPortFile *os.File) {
+		err := peerPortFile.Close()
+		if err != nil {
+			_ = fmt.Errorf("error closing file: %v", err)
+		}
+	}(peerPortFile)
+
+	var stringsArray []string
+	scanner := bufio.NewScanner(peerPortFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.Contains(line, s.Server.Port) {
+			stringsArray = append(stringsArray, line)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	if err := peerPortFile.Truncate(0); err != nil {
+		return err
+	}
+	if _, err := peerPortFile.Seek(0, 0); err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(peerPortFile)
+	for _, line := range stringsArray {
+		_, err := fmt.Fprintln(writer, line)
+		if err != nil {
+			return err
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	log.Printf("Port %s removed from file", s.Server.Port)
+	return nil
 }
 
 func main() {
