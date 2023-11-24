@@ -31,6 +31,7 @@ type ConsensusServer struct {
 	ConsensusServer *Consensus.ConsensusServer
 	ConsensusClient *Consensus.ConsensusClient
 	BackupList      map[string]Consensus.ConsensusClient
+	HasHadElection  bool
 	Server          *Server
 	PortList        []string
 }
@@ -82,14 +83,14 @@ func (s *Server) CreateServer(port string) error {
 func (s *Server) StartServer() {
 
 	//TODO Find port to create server on
-	for i := 1; i < 3; i++ {
+	for i := 1; i < 4; i++ {
 		port := "500" + strconv.Itoa(i)
 		//Try to create server on port
 		err := s.CreateServer(port)
 
 		//If failed, connect to that port
 		if err != nil {
-			connectionError := s.ConsensusConnect(port)
+			connectionError := s.
 			if connectionError != nil {
 				log.Panicf("Could not connect to port: %v", port)
 			}
@@ -243,7 +244,7 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 	errCh := make(chan error)
 
 	for {
-		time.Sleep(5 * time.Second) // Every 5 seconds the server should ping the other servers
+		time.Sleep(10 * time.Second) // Every 5 seconds the server should ping the other servers
 
 		go func() {
 			_, err := targetServer.Ping(context.Background(), ack)
@@ -256,14 +257,16 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 
 		select {
 		case err := <-errCh:
+			//remove server from backuplist
 			// Handle the error if needed
 			if err != nil {
-				if targetServer.Server.isPrimaryServer {
-					//TODO CAll for election
+				delete(s.BackupList, targetServer.Server.Port)
+				if targetServer.Server.isPrimaryServer && !s.HasHadElection {
 
+					//TODO CAll for election
+					s.election(targetServer)
 				} else if !targetServer.Server.isPrimaryServer {
-					//remove server from backuplist
-					delete(s.BackupList, targetServer.Server.Port)
+
 					log.Printf("Could not ping server: %v", targetServer.Server.Port)
 				}
 			}
@@ -275,14 +278,42 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 
 }
 
+// ======================================= ELECTION  ===================================================================
+
+
+
+//election lets all the other servers know that a primary is down, implicitly that makes the sender the primary server
+func (s *ConsensusServer) election(deadServer *ConsensusServer) {
+
+	s.Server.isPrimaryServer = true;
+	election := &Consensus.Command{
+		Port: deadServer.Server.Port,
+	}
+
+	//Send election to all servers
+	for deadServerPort, deadServer := range s.BackupList {
+		_, err := deadServer.ElectionCommand(context.Background(), election)
+		if err != nil {
+			log.Printf("Server: %v could not send election command to server: %v (Election)", s.Server.Port, deadServerPort)
+		}
+	}
+
+}
+
 // ======================================= AUCTION PART OF THE SERVER ==================================================
 
 func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest) (resp *Auction.BidResponse, err error) {
 	// Ack : 0 = success, 1 = fail, 2 = exception
 	// 0 : bid accepted and synced between servers
 	// 1 : bid not accepted, either too low, could not sync (maybe), (auction is over?)
-	// 2 : Some exception happened, maybe timeout?
-
+	// 2 : Some exception happened, not primary server
+	if !s.Server.isPrimaryServer {
+		resp = &Auction.BidResponse{
+			Status:    "exception",
+			Timestamp: s.Server.lamportClock,
+		}
+		return resp, nil
+	}
 	//Step 1: Sync clock, Update and increment
 	s.UpdateAndIncrementClock(bidRequest.Timestamp) //Sync clock and Increment
 
@@ -342,6 +373,13 @@ func (s *AuctionServer) StartAuction() {
 
 func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.ResultRequest) (resp *Auction.ResultResponse, err error) {
 	//States for an auction: result || the highest bid so far
+	if !s.Server.isPrimaryServer {
+		resp = &Auction.ResultResponse{
+			Status:    "exception",
+			Timestamp: s.Server.lamportClock,
+		}
+		return resp, nil
+	}
 
 	status := ""
 	if !s.Auction.isActive {
