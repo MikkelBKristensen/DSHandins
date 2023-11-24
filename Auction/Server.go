@@ -283,13 +283,14 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	}
 
 	//Step 4: Validate bid
-	if bidRequest.Bid <= s.Auction.HighestBid {
+	if !s.validateBid(bidRequest) {
 		resp = &Auction.BidResponse{
 			Status:    "fail",
 			Timestamp: s.Server.lamportClock,
 		}
 		return resp, nil
 	}
+
 
 	//Step 5: Update the highest bid and bidder, sync, send success response
 	s.Auction.HighestBid = bidRequest.Bid
@@ -351,40 +352,14 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 	return resp, nil
 }
 
-func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) (bool, error) {
-	//Step 2: Is auction still active
-	if !s.Auction.isActive {
-		err := errors.New("auction is not active")
-		return false, err
+func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) bool {
+
+	if bidRequest.Bid <= s.Auction.HighestBid {
+		return false
 	}
 
-	//Step 3: Check if the bidder is registered
-	//If there are no other bidders, start Auction timer
-	if len(s.Auction.Bidders) == 0 {
+	return true
 
-		// Initiate auction
-		s.Auction.isActive = true
-		//TODO Start timer here and continue - Maybe it should be its own method call
-
-		//Register bidder
-		s.Auction.Bidders[bidRequest.Id] = true
-
-	} else if !s.Auction.Bidders[bidRequest.Id] { // If the bidder is not in the map
-		//If not registered, then register bidder
-		s.Auction.Bidders[bidRequest.Id] = true
-	}
-
-	//Step 4: Validate bid
-	if bidRequest.Bid < s.Auction.HighestBid {
-		err := errors.New("bid is too low")
-		return false, err
-	}
-
-	//Step 5: Update the highest bid and bidder, sync, send success response
-	s.Auction.HighestBid = bidRequest.Bid
-	s.Auction.HighestBidder = bidRequest.Id
-
-	return true, nil
 }
 
 // =======================================Lamport clock=======================================================================
