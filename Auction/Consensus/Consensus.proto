@@ -8,7 +8,7 @@ service Consensus {
   rpc Sync (ClientBid) returns (Ack);
   rpc Ping (Ack) returns (Ack);
   rpc ElectionCommand (Command) returns (Ack);
-  rpc ConnectionStatus (Ack) returns (Ack);
+  rpc ConnectStatus (Ack) returns (Ack);
 }
 
 message ClientBid {

@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Consensus_Sync_FullMethodName             = "/Consensus.Consensus/Sync"
-	Consensus_Ping_FullMethodName             = "/Consensus.Consensus/Ping"
-	Consensus_ElectionCommand_FullMethodName  = "/Consensus.Consensus/ElectionCommand"
-	Consensus_ConnectionStatus_FullMethodName = "/Consensus.Consensus/ConnectionStatus"
+	Consensus_Sync_FullMethodName            = "/Consensus.Consensus/Sync"
+	Consensus_Ping_FullMethodName            = "/Consensus.Consensus/Ping"
+	Consensus_ElectionCommand_FullMethodName = "/Consensus.Consensus/ElectionCommand"
+	Consensus_ConnectStatus_FullMethodName   = "/Consensus.Consensus/ConnectStatus"
 )
 
 // ConsensusClient is the client API for Consensus service.
@@ -32,7 +32,7 @@ type ConsensusClient interface {
 	Sync(ctx context.Context, in *ClientBid, opts ...grpc.CallOption) (*Ack, error)
 	Ping(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error)
 	ElectionCommand(ctx context.Context, in *Command, opts ...grpc.CallOption) (*Ack, error)
-	ConnectionStatus(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error)
+	ConnectStatus(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error)
 }
 
 type consensusClient struct {
@@ -70,9 +70,9 @@ func (c *consensusClient) ElectionCommand(ctx context.Context, in *Command, opts
 	return out, nil
 }
 
-func (c *consensusClient) ConnectionStatus(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error) {
+func (c *consensusClient) ConnectStatus(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error) {
 	out := new(Ack)
-	err := c.cc.Invoke(ctx, Consensus_ConnectionStatus_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Consensus_ConnectStatus_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ type ConsensusServer interface {
 	Sync(context.Context, *ClientBid) (*Ack, error)
 	Ping(context.Context, *Ack) (*Ack, error)
 	ElectionCommand(context.Context, *Command) (*Ack, error)
-	ConnectionStatus(context.Context, *Ack) (*Ack, error)
+	ConnectStatus(context.Context, *Ack) (*Ack, error)
 	mustEmbedUnimplementedConsensusServer()
 }
 
@@ -103,8 +103,8 @@ func (UnimplementedConsensusServer) Ping(context.Context, *Ack) (*Ack, error) {
 func (UnimplementedConsensusServer) ElectionCommand(context.Context, *Command) (*Ack, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ElectionCommand not implemented")
 }
-func (UnimplementedConsensusServer) ConnectionStatus(context.Context, *Ack) (*Ack, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ConnectionStatus not implemented")
+func (UnimplementedConsensusServer) ConnectStatus(context.Context, *Ack) (*Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConnectStatus not implemented")
 }
 func (UnimplementedConsensusServer) mustEmbedUnimplementedConsensusServer() {}
 
@@ -173,20 +173,20 @@ func _Consensus_ElectionCommand_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Consensus_ConnectionStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Consensus_ConnectStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Ack)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ConsensusServer).ConnectionStatus(ctx, in)
+		return srv.(ConsensusServer).ConnectStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Consensus_ConnectionStatus_FullMethodName,
+		FullMethod: Consensus_ConnectStatus_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ConsensusServer).ConnectionStatus(ctx, req.(*Ack))
+		return srv.(ConsensusServer).ConnectStatus(ctx, req.(*Ack))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -211,8 +211,8 @@ var Consensus_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Consensus_ElectionCommand_Handler,
 		},
 		{
-			MethodName: "ConnectionStatus",
-			Handler:    _Consensus_ConnectionStatus_Handler,
+			MethodName: "ConnectStatus",
+			Handler:    _Consensus_ConnectStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

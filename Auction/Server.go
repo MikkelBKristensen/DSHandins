@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
-	"errors"
+	_ "errors"
 	"fmt"
 	Consensus "github.com/MikkelBKristensen/DSHandins/Auction/Consensus"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
@@ -22,8 +22,8 @@ type Server struct {
 	Port            string
 	ConsensusServer *ConsensusServer
 	AuctionServer   *AuctionServer
-	lamportClock    int32
 	isPrimaryServer bool
+	lamportClock    int32
 }
 
 type ConsensusServer struct {
@@ -56,7 +56,37 @@ type ActiveAuction struct {
 
 // ======================================= CENTRAL SERVER PART =========================================================
 
-func (s *Server) CreateServer(port string) error {
+func CreateServer() *Server {
+	// TODO Maybe the ConsensesServer and AuctionServer needs to be initialised somehow
+	s := &Server{
+		Port:            "1",
+		ConsensusServer: &ConsensusServer{},
+		AuctionServer:   &AuctionServer{},
+		isPrimaryServer: false,
+		lamportClock:    0,
+	}
+
+	err := s.ConsensusServer.updatePortList()
+	if err != nil {
+		return nil
+	}
+
+	if s.ConsensusServer.PortList[0] == s.Port {
+		s.isPrimaryServer = true
+	}
+
+	// Find the next port that is available, so that the servers are hopefully sequentially numbered
+	portInt, _ := strconv.Atoi(s.ConsensusServer.PortList[len(s.ConsensusServer.PortList)-1])
+	s.Port = strconv.Itoa(portInt + 1)
+
+	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
+	return s
+}
+
+func (s *Server) StartServer() error {
+	//Listen on port
+	lis, _ := net.Listen("tcp", ":"+s.Port)
+
 	//Create server
 	grpcServer := grpc.NewServer()
 
@@ -64,47 +94,15 @@ func (s *Server) CreateServer(port string) error {
 	Consensus.RegisterConsensusServer(grpcServer, s.ConsensusServer)
 	Auction.RegisterAuctionServer(grpcServer, s.AuctionServer)
 
-	//Listen on port
-	lis, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-		return err
-	}
-
 	//Start server
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 		return err
 	}
-	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
+
+	s.ConsensusServer.sendConnection()
+
 	return nil
-}
-
-func (s *Server) StartServer() {
-
-	//TODO Find port to create server on
-	for i := 1; i < 4; i++ {
-		port := "500" + strconv.Itoa(i)
-		//Try to create server on port
-		err := s.CreateServer(port)
-
-		//If failed, connect to that port
-		if err != nil {
-			connectionError := s.
-			if connectionError != nil {
-				log.Panicf("Could not connect to port: %v", port)
-			}
-		} else {
-			//Succesful creation of port
-			if i == 1 {
-				//Potential cause of splitbrain
-				log.Printf("Server on port: %v is primary server(StartServer method)", s.Port)
-				s.isPrimaryServer = true
-			}
-			break
-		}
-
-	}
 }
 
 // ======================================= CONSENSUS PART OF THE SERVER ================================================
@@ -139,6 +137,7 @@ func (s *ConsensusServer) ConnectionStatus(_ context.Context, inComing *Consensu
 			Status: "1",
 		}, nil
 	}
+
 	log.Printf("Server %s connected to backup server: %s", s.Server.Port, inComing.Port)
 	return &Consensus.Ack{
 		Port:   s.Server.Port,
@@ -161,7 +160,7 @@ func (s *ConsensusServer) updatePortList() (err error) {
 	if err != nil {
 		log.Fatalf("Could not read from file: %s", err)
 	}
-	s.updateFile("ServerPorts")
+	s.updateFile()
 
 	return nil
 }
@@ -280,12 +279,10 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 
 // ======================================= ELECTION  ===================================================================
 
-
-
-//election lets all the other servers know that a primary is down, implicitly that makes the sender the primary server
+// election lets all the other servers know that a primary is down, implicitly that makes the sender the primary server
 func (s *ConsensusServer) election(deadServer *ConsensusServer) {
 
-	s.Server.isPrimaryServer = true;
+	s.Server.isPrimaryServer = true
 	election := &Consensus.Command{
 		Port: deadServer.Server.Port,
 	}
@@ -340,7 +337,6 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 		}
 		return resp, nil
 	}
-
 
 	//Step 5: Update the highest bid and bidder, sync, send success response
 	s.Auction.HighestBid = bidRequest.Bid
@@ -422,6 +418,13 @@ func (s *AuctionServer) startTimer() {
 
 }
 
+func MaxL(a, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // ======================================= FILE METHODS =======================================================================
 
 func readFile(fileName string) ([]string, error) {
@@ -450,8 +453,8 @@ func readFile(fileName string) ([]string, error) {
 	return peerPortArray, nil
 }
 
-func (s *ConsensusServer) updateFile(fileName string) {
-	peerPortFile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+func (s *ConsensusServer) updateFile() {
+	peerPortFile, err := os.OpenFile("ServerPorts", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		log.Panicf("Could not open file: %s", err)
 	}
@@ -462,8 +465,12 @@ func (s *ConsensusServer) updateFile(fileName string) {
 		}
 	}(peerPortFile)
 
+	fmt.Println("File opened successfully")
+
+	// TODO CANNOT WRITE TO FILE FOR SOME REASON
 	if _, err := peerPortFile.WriteString(s.Server.Port + "\n"); err != nil {
 		log.Fatalf("Could not add Port: %s to file", s.Server.Port)
+		fmt.Println("Could not add Port to file")
 	}
 	log.Printf("Port %s added to file", s.Server.Port)
 }
@@ -521,9 +528,11 @@ func main() {
 	log.SetOutput(f)
 
 	// Create and Start server
-	Server := new(Server)
-	Server.StartServer()
-
+	server := CreateServer()
+	err = server.StartServer()
+	if err != nil {
+		return
+	}
 	//TODO Initate the ping process
 
 }
