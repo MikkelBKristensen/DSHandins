@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -27,7 +28,7 @@ type ConsensusServer struct {
 	Consensus.UnimplementedConsensusServer
 	ConsensusServer *Consensus.ConsensusServer
 	ConsensusClient *Consensus.ConsensusClient
-	BackupList      []Consensus.ConsensusClient
+	BackupList      map[string]Consensus.ConsensusClient
 	Server          *Server
 }
 
@@ -71,6 +72,7 @@ func (s *Server) CreateServer(port string) error {
 		log.Fatalf("failed to serve: %v", err)
 		return err
 	}
+	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
 	return nil
 }
 
@@ -109,7 +111,7 @@ func (s *Server) ConsensusConnect(port string) error {
 		log.Fatalf("did not connect: %v", err)
 	}
 	client := Consensus.NewConsensusClient(conn)
-	s.ConsensusServer.BackupList = append(s.ConsensusServer.BackupList, client)
+	s.ConsensusServer.BackupList[port] = client
 	return nil
 }
 
@@ -119,40 +121,61 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 		Bid:       bidReq.Bid,
 		Timestamp: bidReq.Timestamp,
 	}
+
+	var wg = sync.WaitGroup{}
+
 	//TODO Send result to client
 
 	//TODO Send result to backup servers
-	for target := range s.BackupList {
-		ack, err := s.BackupList[target].Sync(context.Background(), clientBid)
+
+	for _, target := range s.BackupList {
+		wg.Add(1)
+		ack, err := target.Sync(context.Background(), clientBid)
 		if err != nil {
 			log.Printf("Could not sync with backup server: %v", err)
 			return err
 		}
+
 		// create switch case for ack.Status
 		switch ack.Status {
 		case "0":
 			//Success
-			log.Printf("Synced with backup server: %v", s.BackupList[target])
+			log.Printf("Synced with backup server: %v", target)
+			wg.Done()
 		case "1":
 			//Fail
 			//TODO Handle fail - Is the server still alive?
-			log.Printf("Could not sync with backup server: %v", s.BackupList[target])
+			log.Printf("Could not sync with backup server: %v", target)
+			return err
 		case "2":
 			// Exception
-			log.Printf("Exception when syncing with backup server: %v", s.BackupList[target])
+			// TODO Was would happen in this case?
+			log.Printf("Exception when syncing with backup server: %v", target)
+			return err
 		}
 	}
+
+	wg.Wait()
+	log.Printf("All backup servers was synced successfully")
 	return nil
 }
 
 func (s *ConsensusServer) Sync(_ context.Context, clientBid *Consensus.ClientBid) (ack *Consensus.Ack, err error) {
 
-	s.Server.AuctionServer.Auction.HighestBid = clientBid.Bid
-	s.Server.AuctionServer.Auction.HighestBidder = clientBid.Id
+	if clientBid.Bid > s.Server.AuctionServer.Auction.HighestBid {
+		s.Server.AuctionServer.Auction.HighestBid = clientBid.Bid
+		s.Server.AuctionServer.Auction.HighestBidder = clientBid.Id
+		log.Printf("Server %s was successfulyl synced with primary server", s.Server.Port)
+		return &Consensus.Ack{
+			Status: "0",
+		}, nil
+	} else {
+		log.Fatalf("The bid is not valid for backup server %s, and could not sync", s.Server.Port)
+		return &Consensus.Ack{
+			Status: "1",
+		}, nil
+	}
 
-	return &Consensus.Ack{
-		Status: "0",
-	}, nil
 }
 
 // ======================================= CONSENSUS: FAIL DETECTION ================================================
@@ -174,7 +197,9 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 
 		go func() {
 			_, err := targetServer.Ping(context.Background(), ack)
-			errCh <- err // Send the error to the channel
+			if err != nil {
+				errCh <- err
+			} // Send the error to the channel
 		}()
 
 		// Wait for either the goroutine to complete or the timeout
@@ -186,15 +211,9 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 				if targetServer.Server.isPrimaryServer {
 					//TODO CAll for election
 
-				} else {
-					//TODO remove server from backuplist
-
-					for i := range s.BackupList {
-						if {
-							
-						}
-					}
-
+				} else if !targetServer.Server.isPrimaryServer {
+					//remove server from backuplist
+					delete(s.BackupList, targetServer.Server.Port)
 					log.Printf("Could not ping server: %v", targetServer.Server.Port)
 				}
 			}

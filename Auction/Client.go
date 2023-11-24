@@ -67,7 +67,10 @@ func (c *Client) requestResult() {
 	//Sync clock according to response
 	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
 
-	//@TODO Do something with resp her
+	//@TODO If the client send a bidrequest to a non leader server, and exception should be returned
+	//This should propagate the bidrequest to a new server,until the leadserver is found
+	//This should be done without the client knowing about it
+	
 	switch resp.Status {
 	case "EndResult":
 		fmt.Printf("Auction is over, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)

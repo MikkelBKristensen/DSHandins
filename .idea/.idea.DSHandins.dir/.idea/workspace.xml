@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="cf085d68-015e-47c7-8330-5eec129201c5" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/Auction/Client.go" beforeDir="false" afterPath="$PROJECT_DIR$/Auction/Client.go" afterDir="false" />
-    </list>
+    <list default="true" id="cf085d68-015e-47c7-8330-5eec129201c5" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -23,22 +21,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;Handin5&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "main",
+    "vue.rearranger.settings.migration": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;rider.external.source.directories&quot;: [
-      &quot;/Users/oliverlaursen/Library/Application Support/JetBrains/Rider2023.2/resharper-host/DecompilerCache&quot;,
-      &quot;/Users/oliverlaursen/Library/Application Support/JetBrains/Rider2023.2/resharper-host/SourcesCache&quot;,
-      &quot;/Users/oliverlaursen/.local/share/Symbols/src&quot;
+  "keyToStringList": {
+    "rider.external.source.directories": [
+      "/Users/oliverlaursen/Library/Application Support/JetBrains/Rider2023.2/resharper-host/DecompilerCache",
+      "/Users/oliverlaursen/Library/Application Support/JetBrains/Rider2023.2/resharper-host/SourcesCache",
+      "/Users/oliverlaursen/.local/share/Symbols/src"
     ]
   }
-}</component>
+}]]></component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -50,6 +48,7 @@
       <workItem from="1700047327417" duration="1000" />
       <workItem from="1700048114437" duration="1000" />
       <workItem from="1700384778787" duration="12000" />
+      <workItem from="1700813890754" duration="10000" />
     </task>
     <servers />
   </component>
