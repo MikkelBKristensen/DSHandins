@@ -60,7 +60,7 @@ func CreateServer() *Server {
 	// TODO Maybe the ConsensesServer and AuctionServer needs to be initialised somehow
 	s := &Server{
 		Port:            "1",
-		ConsensusServer: &ConsensusServer{},
+		ConsensusServer: &ConsensusServer{Server: &Server{}},
 		AuctionServer:   &AuctionServer{},
 		isPrimaryServer: false,
 		lamportClock:    0,
@@ -71,13 +71,18 @@ func CreateServer() *Server {
 		return nil
 	}
 
-	if s.ConsensusServer.PortList[0] == s.Port {
+	log.Printf("Port List: %v", s.ConsensusServer.PortList)
+	if !(len(s.ConsensusServer.PortList) == 0) && s.ConsensusServer.PortList[0] == s.Port {
 		s.isPrimaryServer = true
 	}
-
+	log.Printf("Port List: %v", s.ConsensusServer.PortList)
 	// Find the next port that is available, so that the servers are hopefully sequentially numbered
-	portInt, _ := strconv.Atoi(s.ConsensusServer.PortList[len(s.ConsensusServer.PortList)-1])
-	s.Port = strconv.Itoa(portInt + 1)
+	if len(s.ConsensusServer.PortList) == 0 {
+		s.Port = "5001"
+	} else {
+		portInt, _ := strconv.Atoi(s.ConsensusServer.PortList[len(s.ConsensusServer.PortList)-1])
+		s.Port = strconv.Itoa(portInt + 1)
+	}
 
 	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
 	return s
