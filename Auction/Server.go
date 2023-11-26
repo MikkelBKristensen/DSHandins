@@ -411,14 +411,14 @@ func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) bool {
 // =======================================Lamport clock=======================================================================
 
 func (s *AuctionServer) UpdateAndIncrementClock(inComingClock int32) {
-	s.Server.lamportClock = MaxL(inComingClock, s.Server.lamportClock) + 1
+	s.Server.lamportClock = MaxLA(inComingClock, s.Server.lamportClock) + 1
 }
 
 func (s *AuctionServer) startTimer() {
 
 }
 
-func MaxL(a, b int32) int32 {
+func MaxLA(a, b int32) int32 {
 	if a > b {
 		return a
 	}
