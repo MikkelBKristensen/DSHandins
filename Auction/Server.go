@@ -7,12 +7,12 @@ import (
 	"fmt"
 	Consensus "github.com/MikkelBKristensen/DSHandins/Auction/Consensus"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
-	"github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -109,6 +109,7 @@ func (s *Server) StartServer() error {
 
 	s.ConsensusServer.sendConnection()
 
+	//TODO Initate the ping process only ping the next node in the ring
 	return nil
 }
 
@@ -266,14 +267,20 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 			//remove server from backuplist
 			// Handle the error if needed
 			if err != nil {
+				//Update list and slice
 				delete(s.BackupList, targetServer.Server.Port)
+				for i, port := range s.PortList {
+					if port == targetServer.Server.Port {
+						s.PortList = append(s.PortList[:i], s.PortList[i+1:]...)
+					}
+				}
 				if targetServer.Server.isPrimaryServer && !s.HasHadElection {
+					s.initiateElection()
 
-					//TODO CAll for election
-					s.election(targetServer)
 				} else if !targetServer.Server.isPrimaryServer {
 
 					log.Printf("Could not ping server: %v", targetServer.Server.Port)
+
 				}
 			}
 		case <-time.After(10 * time.Second):
@@ -287,96 +294,103 @@ func (s *ConsensusServer) PingServer(targetServer *ConsensusServer) {
 // ======================================= ELECTION  ===================================================================
 
 // election lets all the other servers know that a primary is down, implicitly that makes the sender the primary server
-func (s *ConsensusServer) election(deadServer *ConsensusServer) {
+func (s *ConsensusServer) initiateElection() {
 
-	s.Server.isPrimaryServer = true
-	election := &Consensus.Command{
-		Port:       deadServer.Server.Port,
-		LeaderPort: s.Server.Port,
+	//If no other nodes are in the ring, this node can proclaim itself as primary
+	if len(s.BackupList) == 0 {
+		s.Server.isPrimaryServer = true
+		s.HasHadElection = true
+		return
 	}
 
-	//Send election to all servers
-	for deadServerPort, deadServer := range s.BackupList {
-		_, err := deadServer.ElectionCommand(context.Background(), election)
+	//Initialize election list with own port, and send out to next node in the ring
+	election := &Consensus.Command{}
+	election.Ports = append(election.Ports, s.Server.Port)
+
+	//Send election to successor:
+	successorPort, err := s.FindSuccessor()
+	if err != nil {
+		log.Printf("Node %v Could not find successor: %v", s.Server.Port, err)
+	}
+
+	_, err = s.BackupList[successorPort].Election(context.Background(), election)
+	if err != nil {
+		log.Printf("Server: %v could not send election command to server: %v (Election)", s.Server.Port, successorPort)
+	}
+
+}
+
+func (s *ConsensusServer) Election(_ context.Context, command *Consensus.Command) (*Consensus.Empty, error) {
+	//Check if own port is in the list, if so then the election needs to be completed
+	for _, port := range command.Ports {
+		if port == s.Server.Port {
+
+			s.ElectAndCoordinate(command)
+			return &Consensus.Empty{}, nil
+		}
+	}
+	//If own port is not in the list, append it and send to successor
+	return &Consensus.Empty{}, nil
+}
+
+func (s *ConsensusServer) ElectAndCoordinate(command *Consensus.Command) {
+	//Sort so that the highest port is the last in the received list
+	sort.Slice(command.Ports, func(i, j int) bool {
+		return command.Ports[i] < command.Ports[j]
+	})
+	//Coordinate new leader with all nodes in the ring
+	result := &Consensus.Coordinator{
+		Port: command.Ports[len(command.Ports)-1],
+	}
+
+	for _, node := range s.BackupList {
+		_, err := node.Leader(context.Background(), result)
 		if err != nil {
-			log.Printf("Server: %v could not send election command to server: %v (Election)", s.Server.Port, deadServerPort)
+			log.Printf("Server: %v could not send leader command to server: %v (ElectAndCoordinate)", s.Server.Port, node)
 		}
 	}
-}
-
-func (s *ConsensusServer) ElectionCommand(ctx context.Context, command *Consensus.Command) (*Consensus.ElResp, error) {
-
-	SPort, _ := strconv.Atoi(s.Server.Port)
-	CPort, _ := strconv.Atoi(command.LeaderPort)
-	delete(s.BackupList, command.Port)
-	if s.state == 2 {
-		//Wait for the leader to be done
-		for s.state != 0 {
-		}
-	} else if s.state == 1 && SPort > CPort {
-		for s.state != 0 {
-		}
-	}
-
-	return &Consensus.ElResp{
-		Status: "0",
-	}, nil
-}
-
-// ======================================= REFITTED MUTUAL EXCLUSION  ==================================================
-
-// MakeRequest This is the Client part of the peer, where it sends requests
-func (s *ConsensusServer) MakeRequest(deadServerPort string, response *Consensus.ElResp) {
-
-	var wg sync.WaitGroup
-
-	log.Printf("Node %s is requesting Node %s ", s.Server.Port)
-	for _, client := range s.BackupList {
-		wg.Add(1)
-		go func(client Consensus.ConsensusClient) {
-			defer wg.Done()
-			
-			ack, err := client.ElectionCommand(context.Background(), &Consensus.Command{
-				Port:       deadServerPort,
-				LeaderPort: s.Server.Port,
-			})
-			if err != nil {
-				log.Printf("Could not connect to backup server: %s", deadServerPort)
-			}
-
-		}(client)
-
-	}
-	time.Sleep(20 * time.Second)
-	wg.Wait()
-
-	s.Server.isPrimaryServer = true
-	s.state = 2
 
 }
+func (s *ConsensusServer) Leader(_ context.Context, coordinator *Consensus.Coordinator) (*Consensus.Empty, error) {
 
-// RequestEntry This is the server part of the peer, where it handles how to return the actual rpc method
-func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
-	p := s.Peer
-	if p.state == 2 || (p.state == 1 && p.allowedTimestamp < entryRequest.Timestamp) ||
-		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
+	//TODO Consider dropping the hasHadElection bool
 
-		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-
-		log.Printf("Peer %s received request from peer %s but has priority and queues request @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
-
-		for p.state == 2 {
-
-		}
-		p.lamportClock++
-
-		return p.returnMessage(), nil
-	} else {
-		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
-		p.lamportClock++
-		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
-		return p.returnMessage(), nil
+	if coordinator.Port == s.Server.Port {
+		log.Printf("Server: %v is the new primary server", s.Server.Port)
+		s.Server.isPrimaryServer = true
+		s.HasHadElection = true
+		return &Consensus.Empty{}, nil
 	}
+	//Update own state
+	s.Server.isPrimaryServer = false
+	s.HasHadElection = true
+
+	return &Consensus.Empty{}, nil
+}
+
+func (s *ConsensusServer) FindSuccessor() (port string, err error) {
+
+	if len(s.PortList) == 0 {
+		//Choose own port if no other nodes are present
+		return s.Server.Port, nil
+	} else if len(s.PortList) == 1 {
+		//No sort on one element
+		return s.PortList[0], nil
+	}
+
+	//Sort the port list
+	sort.Slice(s.PortList, func(i, j int) bool {
+		return s.PortList[i] < s.PortList[j]
+	})
+
+	for _, port := range s.PortList {
+		if port > s.Server.Port {
+			return port, nil
+		}
+	}
+
+	//Return the first port, as there are no larger ports available in the ring
+	return s.PortList[0], nil
 }
 
 // ======================================= AUCTION PART OF THE SERVER ==================================================
@@ -615,6 +629,6 @@ func main() {
 	if err != nil {
 		return
 	}
-	//TODO Initate the ping process
+	//TODO Initate the ping process only ping the next node in the ring (IN THE STARTUP PROCESS NOT HERE)
 
 }
