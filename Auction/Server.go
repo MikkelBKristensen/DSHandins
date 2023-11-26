@@ -7,6 +7,7 @@ import (
 	"fmt"
 	Consensus "github.com/MikkelBKristensen/DSHandins/Auction/Consensus"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
+	"github.com/MikkelBKristensen/DSHandins/MutualExclusion/MeService"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc"
 	"log"
@@ -34,6 +35,7 @@ type ConsensusServer struct {
 	HasHadElection  bool
 	Server          *Server
 	PortList        []string
+	state           int // 0 = passive, 1 = Requesting/Wanting, 2 = leader
 }
 
 // AuctionServer This struct is used in the Client/Server interaction happening in the Auction service
@@ -289,7 +291,8 @@ func (s *ConsensusServer) election(deadServer *ConsensusServer) {
 
 	s.Server.isPrimaryServer = true
 	election := &Consensus.Command{
-		Port: deadServer.Server.Port,
+		Port:       deadServer.Server.Port,
+		LeaderPort: s.Server.Port,
 	}
 
 	//Send election to all servers
@@ -299,7 +302,81 @@ func (s *ConsensusServer) election(deadServer *ConsensusServer) {
 			log.Printf("Server: %v could not send election command to server: %v (Election)", s.Server.Port, deadServerPort)
 		}
 	}
+}
 
+func (s *ConsensusServer) ElectionCommand(ctx context.Context, command *Consensus.Command) (*Consensus.ElResp, error) {
+
+	SPort, _ := strconv.Atoi(s.Server.Port)
+	CPort, _ := strconv.Atoi(command.LeaderPort)
+	delete(s.BackupList, command.Port)
+	if s.state == 2 {
+		//Wait for the leader to be done
+		for s.state != 0 {
+		}
+	} else if s.state == 1 && SPort > CPort {
+		for s.state != 0 {
+		}
+	}
+
+	return &Consensus.ElResp{
+		Status: "0",
+	}, nil
+}
+
+// ======================================= REFITTED MUTUAL EXCLUSION  ==================================================
+
+// MakeRequest This is the Client part of the peer, where it sends requests
+func (s *ConsensusServer) MakeRequest(deadServerPort string, response *Consensus.ElResp) {
+
+	var wg sync.WaitGroup
+
+	log.Printf("Node %s is requesting Node %s ", s.Server.Port)
+	for _, client := range s.BackupList {
+		wg.Add(1)
+		go func(client Consensus.ConsensusClient) {
+			defer wg.Done()
+			
+			ack, err := client.ElectionCommand(context.Background(), &Consensus.Command{
+				Port:       deadServerPort,
+				LeaderPort: s.Server.Port,
+			})
+			if err != nil {
+				log.Printf("Could not connect to backup server: %s", deadServerPort)
+			}
+
+		}(client)
+
+	}
+	time.Sleep(20 * time.Second)
+	wg.Wait()
+
+	s.Server.isPrimaryServer = true
+	s.state = 2
+
+}
+
+// RequestEntry This is the server part of the peer, where it handles how to return the actual rpc method
+func (s *MeServiceServer) RequestEntry(_ context.Context, entryRequest *MeService.Message) (*MeService.Message, error) {
+	p := s.Peer
+	if p.state == 2 || (p.state == 1 && p.allowedTimestamp < entryRequest.Timestamp) ||
+		(p.state == 1 && p.allowedTimestamp == entryRequest.Timestamp && p.port < entryRequest.NodeId) {
+
+		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
+
+		log.Printf("Peer %s received request from peer %s but has priority and queues request @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
+
+		for p.state == 2 {
+
+		}
+		p.lamportClock++
+
+		return p.returnMessage(), nil
+	} else {
+		p.pickMaxAndUpdateClock(entryRequest.Timestamp)
+		p.lamportClock++
+		log.Printf("Peer %s responds to request from peer %s @ lamport time %d", p.port, entryRequest.NodeId, p.lamportClock)
+		return p.returnMessage(), nil
+	}
 }
 
 // ======================================= AUCTION PART OF THE SERVER ==================================================
