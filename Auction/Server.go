@@ -247,7 +247,7 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 		ack, err := target.Sync(context.Background(), clientBid)
 		if err != nil {
 			log.Printf("Could not sync with backup server: %v", err)
-			return err
+			continue
 		}
 
 		// create switch case for ack.Status
