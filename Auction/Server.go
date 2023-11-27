@@ -225,9 +225,8 @@ func (s *ConsensusServer) updatePortList() (err error) {
 
 func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 	clientBid := &Consensus.ClientBid{
-		Id:        bidReq.Id,
-		Bid:       bidReq.Bid,
-		Timestamp: bidReq.Timestamp,
+		Id:  bidReq.Id,
+		Bid: bidReq.Bid,
 	}
 
 	var wg = sync.WaitGroup{}
@@ -486,20 +485,16 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	// 2 : Some exception happened, not primary server
 	if !s.Server.isPrimaryServer {
 		resp = &Auction.BidResponse{
-			Status:    "exception",
-			Timestamp: s.Server.lamportClock,
+			Status: "exception",
 		}
 		return resp, nil
 	}
-	//Step 1: Sync clock, Update and increment
-	s.UpdateAndIncrementClock(bidRequest.Timestamp) //Sync clock and Increment
 
 	//Step 2: Is auction complete
 	if s.Auction.isStarted && !s.Auction.isActive {
 
 		resp = &Auction.BidResponse{
-			Status:    "fail",
-			Timestamp: s.Server.lamportClock,
+			Status: "fail",
 		}
 		return resp, nil
 	}
@@ -512,8 +507,7 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	//Step 4: Validate bid
 	if !s.validateBid(bidRequest) {
 		resp = &Auction.BidResponse{
-			Status:    "fail",
-			Timestamp: s.Server.lamportClock,
+			Status: "fail",
 		}
 		return resp, nil
 	}
@@ -529,8 +523,7 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 	}
 
 	resp = &Auction.BidResponse{
-		Status:    "success",
-		Timestamp: s.Server.lamportClock,
+		Status: "success",
 	}
 
 	return resp, nil
@@ -550,32 +543,21 @@ func (s *AuctionServer) StartAuction() {
 
 func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.ResultRequest) (resp *Auction.ResultResponse, err error) {
 	//States for an auction: result || the highest bid so far
-	if !s.Server.isPrimaryServer {
-		resp = &Auction.ResultResponse{
-			Status:    "exception",
-			Timestamp: s.Server.lamportClock,
-		}
-		return resp, nil
+	resp = &Auction.ResultResponse{
+		Id:  s.Auction.HighestBidder,
+		Bid: s.Auction.HighestBid,
 	}
-
-	status := ""
+	
 	if !s.Auction.isActive {
-		status = "EndResult"
+		resp.Status = "EndResult"
 		return resp, nil
 	} else if !s.Auction.isStarted && !s.Auction.isActive {
-		status = "NotStarted"
+		resp.Status = "NotStarted"
+		return resp, nil
 	} else {
-		status = "Result"
+		resp.Status = "Result"
+		return resp, nil
 	}
-
-	resp = &Auction.ResultResponse{
-		Id:        s.Auction.HighestBidder,
-		Bid:       s.Auction.HighestBid,
-		Status:    status,
-		Timestamp: s.Server.lamportClock,
-	}
-
-	return resp, nil
 }
 
 func (c *AuctionServer) getPrimaryServer(ctx context.Context, empty *Auction.Empty) (*Auction.ServerResponse, error) {

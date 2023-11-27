@@ -6,7 +6,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"
+	"math/rand"
 	"strconv"
+	"time"
 )
 
 type Client struct {
@@ -14,7 +16,8 @@ type Client struct {
 	auctioneer Auction.AuctionClient
 }
 
-func CreateClient(id int32) *Client {
+func CreateClient() *Client {
+	id := createRandId()
 	return &Client{
 		Id: id,
 	}
@@ -73,7 +76,6 @@ func (c *Client) requestResult() {
 	switch resp.Status {
 	case "EndResult":
 		fmt.Printf("Auction is over, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
-
 	case "NotStarted":
 		fmt.Println("You must bid to start the auction, no bid has been placed yet.")
 	case "Result":
@@ -117,8 +119,16 @@ func MaxL(a int32, b int32) int32 {
 	return b
 }
 
+func createRandId() int32 {
+	minId := 1
+	maxId := 10000
+	rand.Seed(time.Now().UnixNano())
+	id := rand.Int31n(int32(rand.Intn(maxId-minId) + minId))
+	return id
+}
+
 // main method
 func main() {
-	client := CreateClient(1)
-	client.connectToServer()
+	client := CreateClient()
+
 }
