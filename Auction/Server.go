@@ -3,12 +3,9 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	_ "errors"
 	"fmt"
-	Consensus "github.com/MikkelBKristensen/DSHandins/Auction/Consensus"
-	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
-	"google.golang.org/grpc"
-	_ "google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
@@ -17,6 +14,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	Consensus "github.com/MikkelBKristensen/DSHandins/Auction/Consensus"
+	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
+	"google.golang.org/grpc"
+	_ "google.golang.org/grpc"
 )
 
 type Server struct {
@@ -29,8 +31,8 @@ type Server struct {
 
 type ConsensusServer struct {
 	Consensus.UnimplementedConsensusServer
-	ConsensusServer *Consensus.ConsensusServer
-	ConsensusClient *Consensus.ConsensusClient
+	ConsensusServer Consensus.ConsensusServer
+	ConsensusClient Consensus.ConsensusClient
 	BackupList      map[string]Consensus.ConsensusClient
 	Server          *Server
 	PortList        []string
@@ -61,51 +63,52 @@ func CreateServer() *Server {
 	// TODO Maybe the ConsensesServer and AuctionServer needs to be initialised somehow
 	s := &Server{
 		Port:            "1",
-		ConsensusServer: &ConsensusServer{Server: &Server{}},
+		ConsensusServer: &ConsensusServer{},
 		AuctionServer:   &AuctionServer{},
 		isPrimaryServer: false,
 		lamportClock:    0,
 	}
+
+	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
+	s.AuctionServer.Server = s
+	s.ConsensusServer.Server = s
 
 	err := s.ConsensusServer.updatePortList()
 	if err != nil {
 		return nil
 	}
 
-	log.Printf("Port List: %v", s.ConsensusServer.PortList)
-	if !(len(s.ConsensusServer.PortList) == 0) && s.ConsensusServer.PortList[0] == s.Port {
-		s.isPrimaryServer = true
-	}
-	log.Printf("Port List: %v", s.ConsensusServer.PortList)
-	// Find the next port that is available, so that the servers are hopefully sequentially numbered
 	if len(s.ConsensusServer.PortList) == 0 {
 		s.Port = "5001"
+		s.isPrimaryServer = true
 	} else {
 		portInt, _ := strconv.Atoi(s.ConsensusServer.PortList[len(s.ConsensusServer.PortList)-1])
 		s.Port = strconv.Itoa(portInt + 1)
 	}
+	s.ConsensusServer.updateFile()
+	fmt.Printf("My portList: %v \n", s.ConsensusServer.PortList)
+	// Find the next port that is available, so that the servers are hopefully sequentially numbered
 
-	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
 	return s
 }
 
 func (s *Server) StartServer() error {
 	//Listen on port
 	lis, _ := net.Listen("tcp", ":"+s.Port)
-
 	//Create server
 	grpcServer := grpc.NewServer()
-
 	//Register servers
 	Consensus.RegisterConsensusServer(grpcServer, s.ConsensusServer)
 	Auction.RegisterAuctionServer(grpcServer, s.AuctionServer)
-
 	//Start server
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-		return err
-	}
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
 
+	fmt.Println("Now served listener")
+	fmt.Println("The length of my backupList is: ", len(s.ConsensusServer.BackupList))
 	s.ConsensusServer.sendConnection()
 
 	//TODO Initate the ping process only ping the next node in the ring
@@ -120,54 +123,102 @@ func (s *ConsensusServer) sendConnection() {
 		Port:   s.Server.Port,
 		Status: "0",
 	}
+	if len(s.PortList) == 0 {
+		fmt.Println("There are no other servers to connect to")
+	} else {
+		fmt.Println("Will now send connection to ports in portList")
+		for _, port := range s.PortList {
+			if port == s.Server.Port {
+				fmt.Println("Found own port in portList")
+				continue
+			}
+			fmt.Printf("Will now send ConsensusConnect to port %s \n", port)
+			err := s.ConsensusConnect(port)
+			if err != nil {
+				return
+			}
+			fmt.Printf("Server %s connected to server %s \n", s.Server.Port, port)
+		}
+		fmt.Println("This is the length of my backupList now: ", strconv.Itoa(len(s.BackupList)))
+		fmt.Println("Will now send ConnectStatus to all in BackupList")
 
-	if len(s.BackupList) != 0 {
-		for port := range s.BackupList {
-			target := s.BackupList[port]
+		for port, target := range s.BackupList {
+			if target == nil {
+				fmt.Println("Found nil target in backupList for port:", port)
+				continue
+			}
+			fmt.Println("Will now call ConnectStatus on target")
 			ack, err := target.ConnectStatus(context.Background(), connectionAck)
 			if err != nil {
-				log.Printf("Could not connect to backup server: %s", port)
+				log.Printf("Could not connect to backup server %s: %v\n", target, err)
 			}
+			fmt.Println("Have now called ConnectStatus on target")
 			if ack.Status == "1" {
-				log.Printf("Could not connect to backup server: %s", port)
+				log.Printf("Received ack status of 1 from server \n")
 			}
-			log.Printf("Server %s connected to backup server: %s", s.Server.Port, ack.Port)
+
+			fmt.Println("Got ConnectStatus response from port: " + ack.Port)
+			log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, ack.Port)
 		}
 	}
-	log.Printf("There are no backup servers to connect to")
+
 }
 
-func (s *ConsensusServer) ConnectionStatus(_ context.Context, inComing *Consensus.Ack) (*Consensus.Ack, error) {
-	err := s.Server.ConsensusConnect(inComing.Port)
-	if err != nil {
-		return &Consensus.Ack{
-			Status: "1",
-		}, nil
+func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.Ack) (*Consensus.Ack, error) {
+
+	// If the inComing port is not contained in the BackupList, this server will connect to the inComing port
+	if _, contained := s.BackupList[inComing.Port]; !contained {
+		time.Sleep(time.Second * 5)
+		fmt.Println("Will now tro to call consensusConnect on port: " + inComing.Port)
+		err := s.ConsensusConnect(inComing.Port)
+		if err != nil {
+			fmt.Println("Happened error when trying to call ConsensusConnect to port: " + inComing.Port)
+			return &Consensus.Ack{
+				Port:   s.Server.Port,
+				Status: "0",
+			}, nil
+		}
+		fmt.Printf("server %s conncted to server %s \n", s.Server.Port, inComing.Port)
 	}
 
-	log.Printf("Server %s connected to backup server: %s", s.Server.Port, inComing.Port)
+	log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, inComing.Port)
 	return &Consensus.Ack{
 		Port:   s.Server.Port,
 		Status: "0",
 	}, nil
+
 }
 
-func (s *Server) ConsensusConnect(port string) error {
-	conn, err := grpc.Dial(port, grpc.WithInsecure(), grpc.WithBlock())
+func (s *ConsensusServer) ConsensusConnect(port string) error {
+	fmt.Printf("Server %s will now create a connection to %s \n", s.Server.Port, port)
+
+	// Establish a connection to the server
+	conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Printf("Failed to connect to server %s: %v", port, err)
+		return err
 	}
+	defer conn.Close() // Close the connection when done
+
+	// Create a ConsensusClient
 	client := Consensus.NewConsensusClient(conn)
-	s.ConsensusServer.BackupList[port] = client
+	if client == nil {
+		log.Printf("Failed to create ConsensusClient for server %s", port)
+		return errors.New("failed to create ConsensusClient")
+	}
+
+	// Add the client to the BackupList
+	s.BackupList[port] = client
+
+	log.Printf("Successfully added server %s to BackupList", port)
 	return nil
 }
 
 func (s *ConsensusServer) updatePortList() (err error) {
-	s.PortList, err = readFile("ServerPorts")
+	err = s.readFile("ServerPorts")
 	if err != nil {
-		log.Fatalf("Could not read from file: %s", err)
+		return err
 	}
-	s.updateFile()
 
 	return nil
 }
@@ -544,6 +595,8 @@ func (s *AuctionServer) startTimer() {
 
 }
 
+// ======================================= Helper Methods ===============================================================
+
 func MaxLA(a, b int32) int32 {
 	if a > b {
 		return a
@@ -553,7 +606,7 @@ func MaxLA(a, b int32) int32 {
 
 // ======================================= FILE METHODS =======================================================================
 
-func readFile(fileName string) ([]string, error) {
+func (s *ConsensusServer) readFile(fileName string) error {
 	peerPortFile, err := os.Open(fileName)
 	if err != nil {
 		log.Panicf("Could not read from data from file: %s", err)
@@ -573,10 +626,15 @@ func readFile(fileName string) ([]string, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return err
 	}
 
-	return peerPortArray, nil
+	if len(peerPortArray) == 0 {
+		log.Printf("File: %s is empty", fileName)
+	}
+
+	s.PortList = peerPortArray
+	return nil
 }
 
 func (s *ConsensusServer) updateFile() {
@@ -657,8 +715,15 @@ func main() {
 	server := CreateServer()
 	err = server.StartServer()
 	if err != nil {
-		return
+		fmt.Println("Something went wrong in the startServer method")
 	}
-	//TODO Initate the ping process only ping the next node in the ring (IN THE STARTUP PROCESS NOT HERE)
+	time.Sleep(time.Second)
+	//TODO Initate the ping process
+	fmt.Println(server.Port)
+	fmt.Println(server.isPrimaryServer)
+	fmt.Println(server.ConsensusServer.PortList)
+	for true {
+
+	}
 
 }
