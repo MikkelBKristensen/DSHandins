@@ -27,6 +27,7 @@ type Server struct {
 	AuctionServer   *AuctionServer
 	isPrimaryServer bool
 	lamportClock    int32
+	grpcServer      *grpc.Server
 }
 
 type ConsensusServer struct {
@@ -96,13 +97,13 @@ func (s *Server) StartServer() error {
 	//Listen on port
 	lis, _ := net.Listen("tcp", ":"+s.Port)
 	//Create server
-	grpcServer := grpc.NewServer()
+	s.grpcServer = grpc.NewServer()
 	//Register servers
-	Consensus.RegisterConsensusServer(grpcServer, s.ConsensusServer)
-	Auction.RegisterAuctionServer(grpcServer, s.AuctionServer)
+	Consensus.RegisterConsensusServer(s.grpcServer, s.ConsensusServer)
+	Auction.RegisterAuctionServer(s.grpcServer, s.AuctionServer)
 	//Start server
 	go func() {
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := s.grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
@@ -111,7 +112,7 @@ func (s *Server) StartServer() error {
 	fmt.Println("The length of my backupList is: ", len(s.ConsensusServer.BackupList))
 	s.ConsensusServer.sendConnection()
 
-	//TODO Initate the ping process only ping the next node in the ring
+	//TODO Initiate the ping process only ping the next node in the ring
 	return nil
 }
 
@@ -175,7 +176,7 @@ func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.A
 			fmt.Println("Happened error when trying to call ConsensusConnect to port: " + inComing.Port)
 			return &Consensus.Ack{
 				Port:   s.Server.Port,
-				Status: "0",
+				Status: "1",
 			}, nil
 		}
 		fmt.Printf("server %s conncted to server %s \n", s.Server.Port, inComing.Port)
@@ -295,6 +296,7 @@ func (s *ConsensusServer) Ping(_ context.Context, ack *Consensus.Ack) (*Consensu
 	}, nil
 }
 
+/*
 func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 
 	ack := &Consensus.Ack{
@@ -357,11 +359,13 @@ func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 	if err != nil {
 		log.Printf("Could not find successor: %v", err)
 	}
-	target := s.BackupList[port]
+	target = s.BackupList[port]
 	s.PingServer(s.BackupList[port])
 	target.Ping(context.Background(), ack)
 
 }
+
+*/
 
 // ======================================= ELECTION  ===================================================================
 
