@@ -547,7 +547,7 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 		Id:  s.Auction.HighestBidder,
 		Bid: s.Auction.HighestBid,
 	}
-	
+
 	if !s.Auction.isActive {
 		resp.Status = "EndResult"
 		return resp, nil
@@ -712,8 +712,8 @@ func main() {
 	fmt.Println(server.Port)
 	fmt.Println(server.isPrimaryServer)
 	fmt.Println(server.ConsensusServer.PortList)
-	for true {
 
-	}
-
+	// Enter || Ctrl + C to exit
+	exit := ""
+	fmt.Scanln(&exit)
 }
