@@ -65,7 +65,14 @@ func CreateServer() *Server {
 	s := &Server{
 		Port:            "1",
 		ConsensusServer: &ConsensusServer{},
-		AuctionServer:   &AuctionServer{},
+		AuctionServer: &AuctionServer{
+			Auction: &ActiveAuction{
+				HighestBid:    0,
+				HighestBidder: 0,
+				isActive:      false,
+				isStarted:     false,
+			},
+		},
 		isPrimaryServer: false,
 		lamportClock:    0,
 	}
@@ -531,7 +538,7 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 
 func (s *AuctionServer) StartAuction() {
 
-	//Skrive til de andre servere for at prøve at synkronisere auction clocks
+	//TODOSkrive til de andre servere for at prøve at synkronisere auction clocks
 
 	//Initiate auction
 	s.Auction.isStarted = true
@@ -561,8 +568,8 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 }
 
 func (c *AuctionServer) getPrimaryServer(ctx context.Context, empty *Auction.Empty) (*Auction.ServerResponse, error) {
-	primaryPort := c.Server.ConsensusServer.PortOfPrimary
-	return &Auction.ServerResponse{PrimaryPort: primaryPort}, nil
+	isPrimary := c.Server.isPrimaryServer
+	return &Auction.ServerResponse{PrimaryStatus: isPrimary}, nil
 }
 
 func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) bool {

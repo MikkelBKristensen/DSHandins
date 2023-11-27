@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -20,6 +21,7 @@ func CreateClient() *Client {
 	return &Client{
 		Id: id,
 	}
+
 }
 
 func (c *Client) sendBid(amount int32) {
@@ -68,12 +70,19 @@ func (c *Client) requestResult() {
 	result := Auction.ResultRequest{
 		Id: c.Id,
 	}
-	resp, err := c.auctioneer.Result(context.Background(), &result)
-	if err != nil {
+
+	//src: https://grpc.io/blog/deadlines/
+	clientDeadline := time.Now().Add(5 * time.Second)
+	ctx, cancel := context.WithDeadline(context.Background(), clientDeadline)
+	resp, err := c.auctioneer.Result(ctx, &result)
+
+	//Check if the context deadline has exceeded
+	if err != nil || errors.Is(ctx.Err(), context.Canceled) {
 		c.switchServer()
 		c.requestResult()
 		log.Fatalf("could request result: %v", err)
 	}
+	cancel()
 
 	switch resp.Status {
 	case "EndResult":
@@ -95,23 +104,31 @@ func (c *Client) switchServer() {
 }
 func (c *Client) connectToServer() error {
 	// Find primary server and create connection
+
 	for i := 5001; i < 5010; i++ {
+
 		// Start by connecting to port 5001 and call GetPrimaryServer to find the primary server from that server
 		port := strconv.Itoa(i)
+
+		//Continue to loop around until we find the primary server
+		if i == 5009 {
+			i = 5001
+		}
 		conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("could not connect to server on port: %s", port)
 		}
-		primaryServerPort, _ := Auction.NewAuctionClient(conn).GetPrimaryServer(context.Background(), &Auction.Empty{})
+		target := Auction.NewAuctionClient(conn)
 
-		// Connect to primary server
-		primaryConn, err := grpc.Dial("localhost:"+primaryServerPort.PrimaryPort, grpc.WithInsecure())
-		if err != nil {
-			log.Printf("could not connect to server on port: %s", primaryConn)
-		}
+		//isPrimary, _ := target.GetPrimaryServer(context.Background(), &Auction.Empty{})
+
+		//if !isPrimary.PrimaryStatus {
+		//	continue
+		//}
+		log.Printf("Client %d connected to server on port: %s", c.Id, port)
 
 		// Set the auctioneer to the primary server
-		c.auctioneer = Auction.NewAuctionClient(primaryConn)
+		c.auctioneer = target
 		return nil
 	}
 	return nil
@@ -135,5 +152,12 @@ func createRandId() int32 {
 // main method
 func main() {
 	client := CreateClient()
+	err := client.connectToServer()
+	if err != nil {
+		log.Printf("Client: %V, Could not connect to server", client.Id)
+	}
+
+	time.Sleep(5 * time.Second)
+	client.sendBid(10)
 
 }

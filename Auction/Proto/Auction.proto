@@ -33,7 +33,7 @@ message ResultResponse {
 }
 
 message serverResponse {
-    string primaryPort = 1;
+    bool primaryStatus = 1;
 }
 
 message empty {}

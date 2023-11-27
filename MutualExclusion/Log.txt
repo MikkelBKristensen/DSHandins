@@ -49,3 +49,4 @@
 2023/11/26 21:39:18 Peer 5003 is requesting entry @ lamport time 10
 2023/11/26 21:39:18 Peer 5002 received request from peer 5003 but has priority and queues request @ lamport time 11
 2023/11/26 21:39:18 Peer 5001 received request from peer 5003 but has priority and queues request @ lamport time 12
+2023/11/27 19:40:46 Could not listen to port: 5001: listen tcp :5001: bind: address already in use
