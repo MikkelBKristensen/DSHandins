@@ -578,6 +578,11 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 	return resp, nil
 }
 
+func (c *AuctionServer) getPrimaryServer(ctx context.Context, empty *Auction.Empty) (*Auction.ServerResponse, error) {
+	primaryPort := c.Server.ConsensusServer.PortOfPrimary
+	return &Auction.ServerResponse{PrimaryPort: primaryPort}, nil
+}
+
 func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) bool {
 
 	if bidRequest.Bid <= s.Auction.HighestBid {

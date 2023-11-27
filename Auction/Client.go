@@ -6,14 +6,20 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"
+	"strconv"
 )
 
 type Client struct {
-	Id            int32
-	lamportClock  int32
-	auctioneer    Auction.AuctionClient
-	Servers       []string
-	CurrentServer int32
+	Id           int32
+	lamportClock int32
+	auctioneer   Auction.AuctionClient
+}
+
+func CreateClient(id int32) *Client {
+	return &Client{
+		Id:           id,
+		lamportClock: 1,
+	}
 }
 
 func (c *Client) sendBid(amount int32) {
@@ -33,7 +39,7 @@ func (c *Client) sendBid(amount int32) {
 	//Sync clock according to response
 	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
 
-	// succes : bid accepted and synced between servers
+	// success : bid accepted and synced between servers
 	// fail : bid not accepted, either too low, could not sync (maybe), (auction is over?)
 	// exception : Some exception happened, maybe timeout?
 
@@ -85,48 +91,34 @@ func (c *Client) requestResult() {
 	case "Result":
 		fmt.Printf("Auction is still running, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
 	}
-	//States for an auction: result || highest bid
+	//States for an auction: result || the highest bid
 
 }
+
 func (c *Client) switchServer() {
-	if c.CurrentServer > (int32(len(c.Servers)))-1 {
-		c.CurrentServer++
-		err := c.connectionToServer(c.CurrentServer)
-		if err != nil {
-			log.Printf("Client %v could not connect to server on port %v: %v(switchServer)", c.Id, c.CurrentServer, err)
-		}
-	} else {
-		c.CurrentServer = 0
-		err := c.connectionToServer(c.CurrentServer)
-		if err != nil {
-			log.Printf("Client %v could not connect to server on port %v: %v(switchServer)", c.Id, c.CurrentServer, err)
-		}
-	}
+	c.connectToServer()
 }
-func (c *Client) connectionToServer(ServerNumber int32) error {
-	//Start at 0
+func (c *Client) connectToServer() error {
+	// Find primary server and create connection
+	for i := 5001; i < 5010; i++ {
+		// Start by connecting to port 5001 and call GetPrimaryServer to find the primary server from that server
+		port := strconv.Itoa(i)
+		conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("could not connect to server on port: %s", port)
+		}
+		primaryServerPort, _ := Auction.NewAuctionClient(conn).GetPrimaryServer(context.Background(), &Auction.Empty{})
 
-	conn, err := grpc.Dial(c.Servers[ServerNumber], grpc.WithInsecure())
-	if err != nil {
-		return err
+		// Connect to primary server
+		primaryConn, err := grpc.Dial("localhost:"+primaryServerPort.PrimaryPort, grpc.WithInsecure())
+		if err != nil {
+			log.Printf("could not connect to server on port: %s", primaryConn)
+		}
+
+		// Set the auctioneer to the primary server
+		c.auctioneer = Auction.NewAuctionClient(primaryConn)
+		return nil
 	}
-
-	c.auctioneer = Auction.NewAuctionClient(conn)
-
-	return nil
-}
-
-func (c *Client) joinAuction() error {
-
-	//hardcoded list of nodes
-	c.Servers = []string{"5001", "5002", "5003"}
-	c.CurrentServer = 0
-	// Connect to server and get client
-	err := c.connectionToServer(c.CurrentServer)
-	if err != nil {
-		log.Printf("Client %v could not connect to server on port %v: %v(joinAuction)", c.Id, c.CurrentServer, err)
-	}
-
 	return nil
 }
 
@@ -135,4 +127,10 @@ func MaxL(a int32, b int32) int32 {
 		return a
 	}
 	return b
+}
+
+// main method
+func main() {
+	client := CreateClient(1)
+	client.connectToServer()
 }

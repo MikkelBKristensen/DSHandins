@@ -5,8 +5,9 @@ option go_package = "./";
 package Auction;
 
 service Auction {
-    rpc Bid(BidRequest) returns (BidResponse) {}
-    rpc Result(ResultRequest) returns (ResultResponse) {}
+    rpc Bid (BidRequest) returns (BidResponse) {}
+    rpc Result (ResultRequest) returns (ResultResponse) {}
+    rpc getPrimaryServer (empty) returns (serverResponse) {}
 }
 
 message BidRequest {
@@ -18,6 +19,7 @@ message BidRequest {
 message BidResponse {
     string status = 1;
     int32 timestamp = 2;
+    int32 auctionEndTime = 3;
 }
 
 message ResultRequest {
@@ -30,4 +32,11 @@ message ResultResponse {
     int32 bid = 2;
     string status = 3;
     int32 timestamp = 4;
+    int32 auctionEndTime = 5;
 }
+
+message serverResponse {
+    string primaryPort = 1;
+}
+
+message empty {}
