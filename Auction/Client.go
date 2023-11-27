@@ -10,25 +10,20 @@ import (
 )
 
 type Client struct {
-	Id           int32
-	lamportClock int32
-	auctioneer   Auction.AuctionClient
+	Id         int32
+	auctioneer Auction.AuctionClient
 }
 
 func CreateClient(id int32) *Client {
 	return &Client{
-		Id:           id,
-		lamportClock: 1,
+		Id: id,
 	}
 }
 
 func (c *Client) sendBid(amount int32) {
-	c.lamportClock++
-
 	bid := Auction.BidRequest{
-		Id:        c.Id,
-		Bid:       amount,
-		Timestamp: c.lamportClock,
+		Id:  c.Id,
+		Bid: amount,
 	}
 	resp, err := c.auctioneer.Bid(context.Background(), &bid)
 	if err != nil {
@@ -36,8 +31,6 @@ func (c *Client) sendBid(amount int32) {
 		c.sendBid(amount)
 		log.Fatalf("could not place bid: %v", err)
 	}
-	//Sync clock according to response
-	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
 
 	// success : bid accepted and synced between servers
 	// fail : bid not accepted, either too low, could not sync (maybe), (auction is over?)
@@ -67,11 +60,8 @@ func (c *Client) sendBid(amount int32) {
 
 }
 func (c *Client) requestResult() {
-	c.lamportClock++
-
 	result := Auction.ResultRequest{
 		Id: c.Id,
-		//Timestamp: c.lamportClock,
 	}
 	resp, err := c.auctioneer.Result(context.Background(), &result)
 	if err != nil {
@@ -79,8 +69,6 @@ func (c *Client) requestResult() {
 		c.requestResult()
 		log.Fatalf("could request result: %v", err)
 	}
-	//Sync clock according to response
-	c.lamportClock = MaxL(c.lamportClock, resp.Timestamp)
 
 	switch resp.Status {
 	case "EndResult":
