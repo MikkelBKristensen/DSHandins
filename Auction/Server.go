@@ -279,7 +279,7 @@ func (s *ConsensusServer) Sync(_ context.Context, clientBid *Consensus.ClientBid
 	if clientBid.Bid > s.Server.AuctionServer.Auction.HighestBid {
 		s.Server.AuctionServer.Auction.HighestBid = clientBid.Bid
 		s.Server.AuctionServer.Auction.HighestBidder = clientBid.Id
-		log.Printf("Server %s was successfulyl synced with primary server", s.Server.Port)
+		log.Printf("Server %s was successfully synced with primary server", s.Server.Port)
 		return &Consensus.Ack{
 			Status: "0",
 		}, nil
@@ -715,7 +715,7 @@ func main() {
 		fmt.Println("Something went wrong in the startServer method")
 	}
 	time.Sleep(time.Second)
-	//TODO Initate the ping process
+	//TODO Initiate the ping process
 
 	// Enter || Ctrl + C to exit
 	exit := ""
