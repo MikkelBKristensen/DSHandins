@@ -709,9 +709,6 @@ func main() {
 	}
 	time.Sleep(time.Second)
 	//TODO Initate the ping process
-	fmt.Println(server.Port)
-	fmt.Println(server.isPrimaryServer)
-	fmt.Println(server.ConsensusServer.PortList)
 
 	// Enter || Ctrl + C to exit
 	exit := ""
