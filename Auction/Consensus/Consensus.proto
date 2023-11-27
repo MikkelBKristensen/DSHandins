@@ -7,8 +7,9 @@ package Consensus;
 service Consensus {
   rpc Sync (ClientBid) returns (Ack);
   rpc Ping (Ack) returns (Ack);
-  rpc ElectionCommand (Command) returns (Ack);
   rpc ConnectStatus (Ack) returns (Ack);
+  rpc Election (Command) returns (Empty);
+  rpc Leader (Coordinator) returns (Empty);
 }
 
 message ClientBid {
@@ -20,6 +21,15 @@ message Ack{
   string port = 1;
   string status = 2;
 }
-message Command{
+message ElResp{
+  string status = 1;
+}
+message Coordinator{
   string port = 1;
 }
+
+message Command{
+  repeated string ports = 1;
+}
+
+message Empty{}

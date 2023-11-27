@@ -26,3 +26,26 @@
 2023/11/14 12:26:29 Peer 5003 enters critical section at lamport time 16
 2023/11/14 12:26:34 Peer 5002 leaves critical section at lamport time 16
 2023/11/14 12:26:34 Peer 5003 leaves critical section at lamport time 17
+2023/11/26 21:39:12 Port 5001 added to file
+2023/11/26 21:39:12 Peer 5001 has no peers to connect to
+2023/11/26 21:39:12 Port 5002 added to file
+2023/11/26 21:39:12 Peer 5002 is connecting to peer 5001
+2023/11/26 21:39:12 Peer 5001 is connecting to peer 5002
+2023/11/26 21:39:12 Peer 5001 noticed that Peer 5002 joined @ lamport time 2
+2023/11/26 21:39:12 Port 5003 added to file
+2023/11/26 21:39:12 Peer 5003 is connecting to peer 5001
+2023/11/26 21:39:12 Peer 5003 is connecting to peer 5002
+2023/11/26 21:39:12 Peer 5001 is connecting to peer 5003
+2023/11/26 21:39:12 Peer 5001 noticed that Peer 5003 joined @ lamport time 3
+2023/11/26 21:39:12 Peer 5002 is connecting to peer 5003
+2023/11/26 21:39:12 Peer 5002 noticed that Peer 5003 joined @ lamport time 4
+2023/11/26 21:39:14 Peer 5001 is requesting entry @ lamport time 4
+2023/11/26 21:39:14 Peer 5002 responds to request from peer 5001 @ lamport time 6
+2023/11/26 21:39:14 Peer 5003 responds to request from peer 5001 @ lamport time 7
+2023/11/26 21:39:14 Peer 5001 enters critical section at lamport time 10
+2023/11/26 21:39:16 Peer 5002 is requesting entry @ lamport time 7
+2023/11/26 21:39:16 Peer 5003 responds to request from peer 5002 @ lamport time 9
+2023/11/26 21:39:16 Peer 5001 received request from peer 5002 but has priority and queues request @ lamport time 11
+2023/11/26 21:39:18 Peer 5003 is requesting entry @ lamport time 10
+2023/11/26 21:39:18 Peer 5002 received request from peer 5003 but has priority and queues request @ lamport time 11
+2023/11/26 21:39:18 Peer 5001 received request from peer 5003 but has priority and queues request @ lamport time 12
