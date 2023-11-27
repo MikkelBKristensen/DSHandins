@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ConsensusClient interface {
 	Sync(ctx context.Context, in *ClientBid, opts ...grpc.CallOption) (*Ack, error)
-	Ping(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error)
+	Ping(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*PingResponse, error)
 	ConnectStatus(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error)
 	Election(ctx context.Context, in *Command, opts ...grpc.CallOption) (*Empty, error)
 	Leader(ctx context.Context, in *Coordinator, opts ...grpc.CallOption) (*Empty, error)
@@ -46,8 +46,8 @@ func (c *consensusClient) Sync(ctx context.Context, in *ClientBid, opts ...grpc.
 	return out, nil
 }
 
-func (c *consensusClient) Ping(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*Ack, error) {
-	out := new(Ack)
+func (c *consensusClient) Ping(ctx context.Context, in *Ack, opts ...grpc.CallOption) (*PingResponse, error) {
+	out := new(PingResponse)
 	err := c.cc.Invoke(ctx, "/Consensus.Consensus/Ping", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (c *consensusClient) Leader(ctx context.Context, in *Coordinator, opts ...g
 // for forward compatibility
 type ConsensusServer interface {
 	Sync(context.Context, *ClientBid) (*Ack, error)
-	Ping(context.Context, *Ack) (*Ack, error)
+	Ping(context.Context, *Ack) (*PingResponse, error)
 	ConnectStatus(context.Context, *Ack) (*Ack, error)
 	Election(context.Context, *Command) (*Empty, error)
 	Leader(context.Context, *Coordinator) (*Empty, error)
@@ -101,7 +101,7 @@ type UnimplementedConsensusServer struct {
 func (UnimplementedConsensusServer) Sync(context.Context, *ClientBid) (*Ack, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Sync not implemented")
 }
-func (UnimplementedConsensusServer) Ping(context.Context, *Ack) (*Ack, error) {
+func (UnimplementedConsensusServer) Ping(context.Context, *Ack) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
 func (UnimplementedConsensusServer) ConnectStatus(context.Context, *Ack) (*Ack, error) {
