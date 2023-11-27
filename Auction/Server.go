@@ -342,16 +342,6 @@ func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 
 				} else if targetPort != s.PortOfPrimary {
 					//We've pinged a replica, and detected that it is down
-
-					//TODO Switch to next server in the ring
-					port, err := s.FindSuccessor()
-					if err != nil {
-						log.Printf("Could not find successor: %v", err)
-					}
-					client := s.BackupList[port]
-
-					s.PingServer(&client)
-					log.Printf("Could not ping server")
 					break
 
 				}
@@ -361,6 +351,15 @@ func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 			fmt.Println("Timeout reached, the goroutine did not complete in time.")
 		}
 	}
+	//If the code reaches this point, it's time to find a new successor
+	port, err := s.FindSuccessor()
+	if err != nil {
+		log.Printf("Could not find successor: %v", err)
+	}
+	client := s.BackupList[port]
+
+	s.PingServer(&client)
+	log.Printf("Could not ping server")
 
 }
 
