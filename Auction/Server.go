@@ -199,7 +199,6 @@ func (s *ConsensusServer) ConsensusConnect(port string) error {
 		log.Printf("Failed to connect to server %s: %v", port, err)
 		return err
 	}
-	defer conn.Close() // Close the connection when done
 
 	// Create a ConsensusClient
 	client := Consensus.NewConsensusClient(conn)
