@@ -74,7 +74,6 @@ func CreateServer() *Server {
 			},
 		},
 		isPrimaryServer: false,
-		lamportClock:    0,
 	}
 
 	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
@@ -119,6 +118,10 @@ func (s *Server) StartServer() error {
 	fmt.Println("The length of my backupList is: ", len(s.ConsensusServer.BackupList))
 	s.ConsensusServer.sendConnection()
 
+	//
+	port, _ := s.ConsensusServer.FindSuccessor()
+	target := s.ConsensusServer.BackupList[port]
+	s.ConsensusServer.PingServer(&target)
 	//TODO Initiate the ping process only ping the next node in the ring
 	return nil
 }
@@ -176,7 +179,12 @@ func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.A
 
 	// If the inComing port is not contained in the BackupList, this server will connect to the inComing port
 	if _, contained := s.BackupList[inComing.Port]; !contained {
-		time.Sleep(time.Second * 5)
+		// Add inComing port to portliest
+		s.PortList = append(s.PortList, inComing.Port)
+
+		// Let other sever initialise fully
+		time.Sleep(time.Second * 1)
+
 		fmt.Println("Will now tro to call consensusConnect on port: " + inComing.Port)
 		err := s.ConsensusConnect(inComing.Port)
 		if err != nil {
@@ -187,6 +195,15 @@ func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.A
 			}, nil
 		}
 		fmt.Printf("server %s conncted to server %s \n", s.Server.Port, inComing.Port)
+		/*
+			// Set new server as successor
+			if len(s.PortList) == 1 {
+				target := s.BackupList[inComing.Port]
+				s.PingServer(&target)
+				log.Printf("Server %s has set server %s as successor", s.Server.Port, inComing.Port)
+			}
+
+		*/
 	}
 
 	log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, inComing.Port)
@@ -301,8 +318,7 @@ func (s *ConsensusServer) Ping(_ context.Context, ack *Consensus.Ack) (*Consensu
 	}, nil
 }
 
-/*
-func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
+func (s *ConsensusServer) PingServer(target Consensus.ConsensusClient) {
 
 	ack := &Consensus.Ack{
 		Status: "4",
@@ -312,14 +328,12 @@ func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 	for {
 		time.Sleep(10 * time.Second) // Every 5 seconds the server should ping the other servers
 
-		go func(target *Consensus.ConsensusClient) {
-			//TODO Get primary serverstatus
-			_, err := (*target).Ping(context.Background(), ack)
-			if err != nil {
-				errCh <- err
-			}
-			// Send the error to the channel
-		}(target)
+		//TODO Get primary serverstatus
+		_, err := target.Ping(context.Background(), ack)
+		if err != nil {
+			errCh <- err
+		}
+		// Send the error to the channel
 
 		//Get Port of client from backuplist
 		targetPort := ""
@@ -369,8 +383,6 @@ func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 	log.Printf("Could not ping server")
 
 }
-
-*/
 
 // ======================================= ELECTION  ===================================================================
 
@@ -433,6 +445,7 @@ func (s *ConsensusServer) ElectAndCoordinate(command *Consensus.Command) {
 	result := &Consensus.Coordinator{
 		Port: command.Ports[len(command.Ports)-1],
 	}
+	log.Printf("Server: %v is the new primary server", result.Port)
 
 	for _, node := range s.BackupList {
 		_, err := node.Leader(context.Background(), result)
