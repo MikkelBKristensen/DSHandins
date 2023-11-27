@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -24,6 +23,7 @@ func CreateClient() *Client {
 }
 
 func (c *Client) sendBid(amount int32) {
+	log.Printf("Client %d wants to send bid of: %d", c.Id, amount)
 	bid := Auction.BidRequest{
 		Id:  c.Id,
 		Bid: amount,
@@ -42,14 +42,14 @@ func (c *Client) sendBid(amount int32) {
 	//TODO Add log
 	switch resp.Status {
 	case "success":
-		fmt.Println("Bid was accepted")
+		log.Println("Bid was accepted")
 		return //We don't need to do anything at this point
 
 	case "fail":
-		fmt.Println("Bid was not accepted")
+		log.Println("Bid was not accepted")
 
 	case "exception":
-		fmt.Println("Bid was not accepted, exception: %v", resp.Status)
+		log.Printf("Bid was not accepted, exception: %v", resp.Status)
 
 		//Maybe incorporate a goroutine here, to find the lead server faster
 		c.switchServer()
@@ -62,7 +62,9 @@ func (c *Client) sendBid(amount int32) {
 	}
 
 }
+
 func (c *Client) requestResult() {
+	log.Printf("Client %d wants to request result", c.Id)
 	result := Auction.ResultRequest{
 		Id: c.Id,
 	}
@@ -75,18 +77,21 @@ func (c *Client) requestResult() {
 
 	switch resp.Status {
 	case "EndResult":
-		fmt.Printf("Auction is over, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
+		log.Printf("Auction is over, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
 	case "NotStarted":
-		fmt.Println("You must bid to start the auction, no bid has been placed yet.")
+		log.Println("You must bid to start the auction, no bid has been placed yet.")
 	case "Result":
-		fmt.Printf("Auction is still running, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
+		log.Printf("Auction is still running, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
 	}
 	//States for an auction: result || the highest bid
 
 }
 
 func (c *Client) switchServer() {
-	c.connectToServer()
+	err := c.connectToServer()
+	if err != nil {
+		log.Fatalf("could not switch to server: %v", err)
+	}
 }
 func (c *Client) connectToServer() error {
 	// Find primary server and create connection
