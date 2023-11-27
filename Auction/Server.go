@@ -84,11 +84,10 @@ func CreateServer() *Server {
 		s.isPrimaryServer = true
 	} else {
 		portInt, _ := strconv.Atoi(s.ConsensusServer.PortList[len(s.ConsensusServer.PortList)-1])
-		fmt.Println(portInt)
 		s.Port = strconv.Itoa(portInt + 1)
 	}
 	s.ConsensusServer.updateFile()
-	fmt.Printf("Port List: %v \n", s.ConsensusServer.PortList)
+	fmt.Printf("My portList: %v \n", s.ConsensusServer.PortList)
 	// Find the next port that is available, so that the servers are hopefully sequentially numbered
 
 	return s
@@ -102,7 +101,6 @@ func (s *Server) StartServer() error {
 	//Register servers
 	Consensus.RegisterConsensusServer(grpcServer, s.ConsensusServer)
 	Auction.RegisterAuctionServer(grpcServer, s.AuctionServer)
-	fmt.Println("Registered servers")
 	//Start server
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
@@ -110,9 +108,8 @@ func (s *Server) StartServer() error {
 		}
 	}()
 
-	fmt.Println("Served listener")
-	fmt.Println(len(s.ConsensusServer.BackupList))
-	fmt.Println("Will now send connection")
+	fmt.Println("Now served listener")
+	fmt.Println("The length of my backupList is: ", len(s.ConsensusServer.BackupList))
 	s.ConsensusServer.sendConnection()
 
 	//TODO Initate the ping process only ping the next node in the ring
@@ -127,7 +124,6 @@ func (s *ConsensusServer) sendConnection() {
 		Port:   s.Server.Port,
 		Status: "0",
 	}
-	fmt.Printf("I now want to send connections. My portList looks like this: %v \n", s.PortList)
 	if len(s.PortList) == 0 {
 		fmt.Println("There are no other servers to connect to")
 	} else {
@@ -137,36 +133,39 @@ func (s *ConsensusServer) sendConnection() {
 				fmt.Println("Found own port in portList")
 				continue
 			}
-			fmt.Printf("Will now send ConsensusConnect to port %s", port)
+			fmt.Printf("Will now send ConsensusConnect to port %s \n", port)
 			err := s.ConsensusConnect(port)
 			if err != nil {
 				return
 			}
-			fmt.Printf("Server %s connected to server %s", s.Server.Port, port)
+			fmt.Printf("Server %s connected to server %s \n", s.Server.Port, port)
 		}
-		fmt.Printf(strconv.Itoa(len(s.BackupList)))
+		fmt.Println("This is the length of my backupList now: ", strconv.Itoa(len(s.BackupList)))
 		fmt.Println("Will now send ConnectStatus to all in BackupList")
 
-		for _, target := range s.BackupList {
+		for port, target := range s.BackupList {
 			if target == nil {
-				fmt.Println("Server " + s.Server.Port + " Found nil target in backupList")
+				fmt.Println("Found nil target in backupList for port:", port)
+				continue
 			}
+			fmt.Println("Will now call ConnectStatus on target")
 			ack, err := target.ConnectStatus(context.Background(), connectionAck)
 			if err != nil {
-				log.Printf("Could not connect to backup server: %s", target)
-
+				log.Printf("Could not connect to backup server %s: %v\n", target, err)
 			}
+			fmt.Println("Have now called ConnectStatus on target")
 			if ack.Status == "1" {
-				log.Printf("Could not connect to backup server: %s", target)
+				log.Printf("Received ack status of 1 from server \n")
 			}
+
 			fmt.Println("Got ConnectStatus response from port: " + ack.Port)
-			log.Printf("Server %s connected to backup server: %s", s.Server.Port, ack.Port)
+			log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, ack.Port)
 		}
 	}
 
 }
 
-func (s *ConsensusServer) ConnectionStatus(_ context.Context, inComing *Consensus.Ack) (*Consensus.Ack, error) {
+func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.Ack) (*Consensus.Ack, error) {
 
 	// If the inComing port is not contained in the BackupList, this server will connect to the inComing port
 	if _, contained := s.BackupList[inComing.Port]; !contained {
@@ -177,7 +176,7 @@ func (s *ConsensusServer) ConnectionStatus(_ context.Context, inComing *Consensu
 			fmt.Println("Happened error when trying to call ConsensusConnect to port: " + inComing.Port)
 			return &Consensus.Ack{
 				Port:   s.Server.Port,
-				Status: "1",
+				Status: "0",
 			}, nil
 		}
 		fmt.Printf("server %s conncted to server %s \n", s.Server.Port, inComing.Port)
