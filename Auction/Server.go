@@ -61,7 +61,7 @@ type ActiveAuction struct {
 // ======================================= CENTRAL SERVER PART =========================================================
 
 func CreateServer() *Server {
-	// TODO Maybe the ConsensesServer and AuctionServer needs to be initialised somehow
+	// TODO Maybe the ConsensusServer and AuctionServer needs to be initialised somehow
 	s := &Server{
 		Port:            "1",
 		ConsensusServer: &ConsensusServer{},
@@ -343,8 +343,7 @@ func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 					break
 
 				} else if targetPort != s.PortOfPrimary {
-					//We've pinged a replica, and located that it is down
-					log.Printf("Could not ping server")
+					//We've pinged a replica, and detected that it is down
 					break
 
 				}
@@ -354,14 +353,15 @@ func (s *ConsensusServer) PingServer(target *Consensus.ConsensusClient) {
 			fmt.Println("Timeout reached, the goroutine did not complete in time.")
 		}
 	}
-	//TODO Switch to next server in the ring
+	//If the code reaches this point, it's time to find a new successor
 	port, err := s.FindSuccessor()
 	if err != nil {
 		log.Printf("Could not find successor: %v", err)
 	}
-	target = s.BackupList[port]
-	s.PingServer(s.BackupList[port])
-	target.Ping(context.Background(), ack)
+	client := s.BackupList[port]
+
+	s.PingServer(&client)
+	log.Printf("Could not ping server")
 
 }
 
