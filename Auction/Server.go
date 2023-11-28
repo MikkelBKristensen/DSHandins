@@ -156,24 +156,33 @@ func (s *ConsensusServer) sendConnection() {
 		fmt.Println("This is the length of my backupList now: ", strconv.Itoa(len(s.BackupList)))
 		fmt.Println("Will now send ConnectStatus to all in BackupList")
 
-		for port, target := range s.BackupList {
-			if target == nil {
-				fmt.Println("Found nil target in backupList for port:", port)
-				continue
-			}
-			fmt.Println("Will now call ConnectStatus on target")
-			ack, err := target.ConnectStatus(context.Background(), connectionAck)
-			if err != nil {
-				log.Printf("Could not connect to backup server %s: %v\n", target, err)
-			}
-			fmt.Println("Have now called ConnectStatus on target")
-			if ack.Status == "1" {
-				log.Printf("Received ack status of 1 from server \n")
-			}
+		if len(s.BackupList) > 1 {
+			for port, target := range s.BackupList {
+				if target == nil {
+					fmt.Println("Found nil target in backupList for port:", port)
+					continue
+				}
+				fmt.Println("Will now call ConnectStatus on target")
+				ack, err := target.ConnectStatus(context.Background(), connectionAck)
+				if err != nil {
+					log.Printf("Could not connect to backup server %s: %v\n", target, err)
+				}
+				fmt.Println("Have now called ConnectStatus on target")
 
-			fmt.Println("Got ConnectStatus response from port: " + ack.Port)
-			log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, ack.Port)
+				if ack.Status == "1" {
+					log.Printf("Received ack status of 1 from server \n")
+				}
+
+				fmt.Println("Got ConnectStatus response from port: " + ack.Port)
+				log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, ack.Port)
+			}
+		} else {
+			_, err := s.BackupList[s.PortList[0]].ConnectStatus(context.Background(), connectionAck)
+			if err != nil {
+				log.Printf("(SendConnection)Could not connect to backup server %s: %v\n", s.PortList[0], err)
+			}
 		}
+
 	}
 
 }
@@ -189,13 +198,16 @@ func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.A
 		time.Sleep(time.Second * 1)
 
 		fmt.Println("Will now try to call consensusConnect on port: " + inComing.Port)
+
+		//Adds server to backuplist
 		err := s.ConsensusConnect(inComing.Port)
 		if err != nil {
 			fmt.Println("Error happened when trying to call ConsensusConnect to port: " + inComing.Port)
-			return &Consensus.Ack{
+			resp := &Consensus.Ack{
 				Port:   s.Server.Port,
 				Status: "1",
-			}, nil
+			}
+			return resp, nil
 		}
 		fmt.Printf("server %s conncted to server %s \n", s.Server.Port, inComing.Port)
 
@@ -211,10 +223,11 @@ func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.A
 	}
 
 	log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, inComing.Port)
-	return &Consensus.Ack{
+	resp := &Consensus.Ack{
 		Port:   s.Server.Port,
 		Status: "0",
-	}, nil
+	}
+	return resp, nil
 
 }
 
@@ -238,7 +251,7 @@ func (s *ConsensusServer) ConsensusConnect(port string) error {
 	// Add the client to the BackupList
 	s.BackupList[port] = client
 
-	log.Printf("Successfully added server %s to BackupList", port)
+	log.Printf("%v: Successfully added server %s to BackupList", s.Server.Port, port)
 	return nil
 }
 
@@ -366,7 +379,9 @@ func (s *ConsensusServer) PingServer(target Consensus.ConsensusClient) {
 					}
 				}
 				if targetPort == s.PortOfPrimary {
+					log.Printf("Server: %v has detected that the primary server is down, initiating election", s.Server.Port)
 					s.initiateElection()
+
 					break
 
 				} else if targetPort != s.PortOfPrimary {
@@ -396,6 +411,7 @@ func (s *ConsensusServer) initiateElection() {
 
 	//If no other nodes are in the ring, this node can proclaim itself as primary
 	if len(s.BackupList) == 0 {
+		log.Printf("Server: %v is the new primary server, no other backup server was found", s.Server.Port)
 		s.Server.isPrimaryServer = true
 		s.PortOfPrimary = s.Server.Port
 		return
@@ -421,6 +437,7 @@ func (s *ConsensusServer) initiateElection() {
 func (s *ConsensusServer) Election(_ context.Context, incomming *Consensus.Command) (*Consensus.Empty, error) {
 	//Check if own port is in the list, if so then the election needs to be completed
 	for _, port := range incomming.Ports {
+		log.Printf("Server: %v received election command from server: %v (Election)", s.Server.Port, port)
 		if port == s.Server.Port {
 
 			s.ElectAndCoordinate(incomming)
@@ -457,6 +474,7 @@ func (s *ConsensusServer) ElectAndCoordinate(command *Consensus.Command) {
 		if err != nil {
 			log.Printf("Server: %v could not send leader command to server: %v (ElectAndCoordinate)", s.Server.Port, node)
 		}
+		log.Printf("Server: %v sent leader command to server: %v (ElectAndCoordinate)", s.Server.Port, node)
 	}
 
 }
