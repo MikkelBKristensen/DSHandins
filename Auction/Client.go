@@ -166,6 +166,40 @@ func createRandId() int32 {
 	id := rand.Int31n(int32(rand.Intn(maxId-minId) + minId))
 	return id
 }
+func handleBid(c *Client) {
+	fmt.Println("Type the amount you want to bid")
+	var amount int32
+	_, err := fmt.Scan(&amount)
+	if err != nil {
+		log.Printf("Error: %v", err)
+	}
+	c.sendBid(amount)
+}
+
+func (c *Client) handleInput() {
+	fmt.Println("Place a bid by typing: bid")
+	fmt.Println("Request result by typing: result")
+	fmt.Println("Exit by typing: exit")
+	var command string
+
+	for {
+		_, err := fmt.Scan(&command)
+		if err != nil {
+			log.Printf("Error: %v", err)
+		}
+		if command == "bid" {
+			handleBid(c)
+		} else if command == "result" {
+			c.requestResult()
+		} else if command == "exit" {
+			return
+		} else {
+			fmt.Println("Unknown command")
+			c.handleInput()
+		}
+	}
+
+}
 
 // main method
 func main() {
@@ -185,7 +219,6 @@ func main() {
 		log.Printf("Client: %V, Could not connect to server", client.Id)
 	}
 
-	time.Sleep(5 * time.Second)
-	client.sendBid(10)
+	client.handleInput()
 
 }
