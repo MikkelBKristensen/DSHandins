@@ -1,0 +1,32 @@
+2023/11/28 15:30:35 File: ServerPorts is empty
+2023/11/28 15:30:35 Port 5001 added to file
+2023/11/28 15:30:42 Port 5002 added to file
+2023/11/28 15:30:42 5002: Successfully added server 5001 to BackupList
+2023/11/28 15:30:43 5001: Successfully added server 5002 to BackupList
+2023/11/28 15:30:53 Client 259 connected to server on port: 5001
+2023/11/28 15:31:02 Client 88 connected to server on port: 5001
+2023/11/28 15:31:18 Client 88 wants to send bid of: 10
+2023/11/28 15:31:18 Server 5002 was successfully synced with primary server
+2023/11/28 15:31:18 Synced with backup server: &{0x140000ee000}
+2023/11/28 15:31:18 All backup servers was synced successfully
+2023/11/28 15:31:18 Bid was accepted
+2023/11/28 15:31:32 Client 88 wants to send bid of: 10
+2023/11/28 15:31:32 Bid was not accepted
+2023/11/28 15:31:51 Client 259 wants to send bid of: 15
+2023/11/28 15:31:51 Server 5002 was successfully synced with primary server
+2023/11/28 15:31:51 Synced with backup server: &{0x140000ee000}
+2023/11/28 15:31:51 All backup servers was synced successfully
+2023/11/28 15:31:51 Bid was accepted
+2023/11/28 15:34:19 (SendConnection)Could not connect to backup server 5001: rpc error: code = Unavailable desc = error reading from server: EOF
+2023/11/28 15:34:25 Server: 5002 has detected that the primary server is down, initiating election
+2023/11/28 15:34:25 Server: 5002 is the new primary server, no other backup server was found
+2023/11/28 15:34:44 Client 259 wants to send bid of: 20
+2023/11/28 15:34:44 Client 259 connected to server on port: 5002
+2023/11/28 15:34:44 Client 259 wants to send bid of: 20
+2023/11/28 15:34:44 All backup servers was synced successfully
+2023/11/28 15:34:44 Bid was accepted
+2023/11/28 15:34:44 could not place bid: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:5001: connect: connection refused"
+2023/11/28 15:37:53 Port 5003 added to file
+2023/11/28 15:37:53 5003: Successfully added server 5001 to BackupList
+2023/11/28 15:37:53 5003: Successfully added server 5002 to BackupList
+2023/11/28 15:37:53 Could not connect to backup server &{%!s(*grpc.ClientConn=&{0x14000162320 0x10046d250 localhost:5001 {{passthrough  <nil>  /localhost:5001  false false   }} localhost:5001 {<nil> <nil> [] [] <nil> <nil> {{1000000000 1.6 0.2 120000000000}} false false 0 <nil>  <nil> {grpc-go/1.59.0 <nil> false [] {} <nil> {0 0 false} [] 0 0 32768 32768 false <nil> <nil> true} [] <nil> false false false <nil> <nil> <nil> <nil> [] 1800000000000 {}} 0x140001da7b0 0x100c26fc0 0x14000183560 0x1400019fd50 0x140001da870 0x14000160a80 {{{0 0} 0 0 {{} 0} {{} 0}} 0x1400011a3d0} 0x1400014c2e0 {<nil>} 0x14000158560 {{0 0} 0 0 {{} 0} {{} 0}} 0x140001f4000 0x140001621e0 map[0x140001fe000:{}] {0 0 false} 0 0x14000160a40 {0 0} {transport: Error while dialing: dial tcp [::1]:5001: connect: connection refused true 0x140000b8280}})}: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:5001: connect: connection refused"

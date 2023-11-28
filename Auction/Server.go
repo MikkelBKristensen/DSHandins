@@ -276,7 +276,7 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 
 	//TODO Send result to backup servers
 
-	for _, target := range s.BackupList {
+	for port, target := range s.BackupList {
 		wg.Add(1)
 		ack, err := target.Sync(context.Background(), clientBid)
 		if err != nil {
@@ -288,7 +288,7 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 		switch ack.Status {
 		case "0":
 			//Success
-			log.Printf("Synced with backup server: %v", target)
+			log.Printf("Synced with backup server: %v", port)
 			wg.Done()
 		case "1":
 			//Fail

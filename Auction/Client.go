@@ -37,9 +37,10 @@ func (c *Client) sendBid(amount int32) {
 	resp, err := c.auctioneer.Bid(ctx, &bid)
 
 	if err != nil || errors.Is(ctx.Err(), context.Canceled) {
+		log.Printf("could not place bid, switching Server %v", err)
 		c.switchServer()
 		c.sendBid(amount)
-		log.Fatalf("could not place bid: %v", err)
+		
 	}
 
 	// success : bid accepted and synced between servers
@@ -174,6 +175,7 @@ func handleBid(c *Client) {
 		log.Printf("Error: %v", err)
 	}
 	c.sendBid(amount)
+	fmt.Println("Enter new command")
 }
 
 func (c *Client) handleInput() {
