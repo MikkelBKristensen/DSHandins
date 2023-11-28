@@ -40,7 +40,7 @@ func (c *Client) sendBid(amount int32) {
 		log.Printf("could not place bid, switching Server %v", err)
 		c.switchServer()
 		c.sendBid(amount)
-		
+
 	}
 
 	// success : bid accepted and synced between servers
@@ -66,7 +66,7 @@ func (c *Client) sendBid(amount int32) {
 	default:
 		c.switchServer()
 		c.sendBid(amount)
-		log.Fatalf("Unknown status: %v", resp.Status)
+		log.Printf("Unknown status: %v", resp.Status)
 	}
 	cancel()
 }
@@ -84,9 +84,9 @@ func (c *Client) requestResult() {
 
 	//Check if the context deadline has exceeded
 	if err != nil || errors.Is(ctx.Err(), context.Canceled) {
+		log.Printf("could not request result: %v", err)
 		c.switchServer()
 		c.requestResult()
-		log.Fatalf("could request result: %v", err)
 	}
 	cancel()
 
