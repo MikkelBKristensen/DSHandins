@@ -15,7 +15,7 @@ service Consensus {
 message ClientBid {
   int32 Id = 1;
   int32 Bid = 2;
-  int32 Timestamp = 3;
+  string AuctionStart = 3;
 }
 message Ack{
   string port = 1;

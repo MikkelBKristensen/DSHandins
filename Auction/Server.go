@@ -52,9 +52,10 @@ type AuctionServer struct {
 type ActiveAuction struct {
 	HighestBid    int32
 	HighestBidder int32
-	time.Duration
-	isActive  bool
-	isStarted bool
+	timeofStart   time.Time
+	isActive      bool
+	isStarted     bool
+	Duration      float64
 }
 
 // ======================================= CENTRAL SERVER PART =========================================================
@@ -73,6 +74,7 @@ func CreateServer() *Server {
 				HighestBidder: 0,
 				isActive:      false,
 				isStarted:     false,
+				Duration:      60,
 			},
 		},
 		isPrimaryServer: false,
@@ -266,8 +268,9 @@ func (s *ConsensusServer) updatePortList() (err error) {
 
 func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 	clientBid := &Consensus.ClientBid{
-		Id:  bidReq.Id,
-		Bid: bidReq.Bid,
+		Id:           bidReq.Id,
+		Bid:          bidReq.Bid,
+		AuctionStart: s.Server.AuctionServer.Auction.timeofStart.String(),
 	}
 
 	var wg = sync.WaitGroup{}
@@ -311,6 +314,8 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 func (s *ConsensusServer) Sync(_ context.Context, clientBid *Consensus.ClientBid) (ack *Consensus.Ack, err error) {
 
 	if clientBid.Bid > s.Server.AuctionServer.Auction.HighestBid {
+		//Take the timestamp from the bid, and set the auction time to that in case Primary server is down
+		s.Server.AuctionServer.Auction.timeofStart, err = time.Parse(time.RFC3339, clientBid.AuctionStart)
 		s.Server.AuctionServer.Auction.HighestBid = clientBid.Bid
 		s.Server.AuctionServer.Auction.HighestBidder = clientBid.Id
 		log.Printf("Server %s was successfully synced with primary server", s.Server.Port)
@@ -533,9 +538,20 @@ func (s *AuctionServer) Bid(ctx context.Context, bidRequest *Auction.BidRequest)
 		return resp, nil
 	}
 
+	//Bid received at time:
+	bidTime := time.Now()
+
 	//Step 2: Is auction complete
 	if s.Auction.isStarted && !s.Auction.isActive {
 
+		resp = &Auction.BidResponse{
+			Status: "fail",
+		}
+		return resp, nil
+		//Evaluate if the 60 seconds has passed since the auction was started
+	} else if s.Auction.isStarted && s.Auction.Duration < bidTime.Sub(s.Auction.timeofStart).Seconds() {
+
+		s.Auction.isActive = false
 		resp = &Auction.BidResponse{
 			Status: "fail",
 		}
@@ -579,8 +595,8 @@ func (s *AuctionServer) StartAuction() {
 	//Initiate auction
 	s.Auction.isStarted = true
 	s.Auction.isActive = true
+	s.Auction.timeofStart = time.Now()
 	//TODO Start timer here and continue - Maybe it should be its own method call
-	s.startTimer()
 
 }
 
@@ -590,6 +606,8 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 		Id:  s.Auction.HighestBidder,
 		Bid: s.Auction.HighestBid,
 	}
+	//Time of request
+	requestTime := time.Now()
 
 	if !s.Auction.isActive {
 		resp.Status = "EndResult"
@@ -597,10 +615,14 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 	} else if !s.Auction.isStarted && !s.Auction.isActive {
 		resp.Status = "NotStarted"
 		return resp, nil
+	} else if s.Auction.isStarted && s.Auction.Duration > requestTime.Sub(s.Auction.timeofStart).Seconds() {
+		s.Auction.isActive = false
+		resp.Status = "EndResult"
 	} else {
 		resp.Status = "Result"
 		return resp, nil
 	}
+	return
 }
 
 func (c *AuctionServer) GetPrimaryServer(_ context.Context, _ *Auction.Empty) (*Auction.ServerResponse, error) {
@@ -623,10 +645,6 @@ func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) bool {
 
 func (s *AuctionServer) UpdateAndIncrementClock(inComingClock int32) {
 	s.Server.lamportClock = MaxLA(inComingClock, s.Server.lamportClock) + 1
-}
-
-func (s *AuctionServer) startTimer() {
-
 }
 
 // ======================================= Helper Methods ===============================================================
