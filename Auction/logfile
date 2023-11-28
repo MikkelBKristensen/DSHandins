@@ -1,10 +1,5 @@
-2023/11/27 20:38:12 File: ServerPorts is empty
-2023/11/27 20:38:12 Port 5001 added to file
-2023/11/27 20:38:16 Port 5002 added to file
-2023/11/27 20:38:16 Successfully added server 5001 to BackupList
-2023/11/27 20:38:21 Successfully added server 5002 to BackupList
-2023/11/27 20:38:21 Server 5001 connected to backup server: 5002 
-2023/11/27 20:38:21 Server 5002 connected to backup server: 5001 
-2023/11/27 20:38:25 Server 5002 was successfulyl synced with primary server
-2023/11/27 20:38:25 Synced with backup server: &{0x14000254000}
-2023/11/27 20:38:25 All backup servers was synced successfully
+2023/11/28 14:05:04 File: ServerPorts is empty
+2023/11/28 14:05:04 Port 5001 added to file
+2023/11/28 14:05:10 Port 5002 added to file
+2023/11/28 14:05:10 Successfully added server 5001 to BackupList
+2023/11/28 14:05:11 Successfully added server 5002 to BackupList

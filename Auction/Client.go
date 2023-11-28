@@ -2,11 +2,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	Auction "github.com/MikkelBKristensen/DSHandins/Auction/Proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 )
@@ -30,8 +32,11 @@ func (c *Client) sendBid(amount int32) {
 		Id:  c.Id,
 		Bid: amount,
 	}
-	resp, err := c.auctioneer.Bid(context.Background(), &bid)
-	if err != nil {
+	clientDeadline := time.Now().Add(10 * time.Second)
+	ctx, cancel := context.WithDeadline(context.Background(), clientDeadline)
+	resp, err := c.auctioneer.Bid(ctx, &bid)
+
+	if err != nil || errors.Is(ctx.Err(), context.Canceled) {
 		c.switchServer()
 		c.sendBid(amount)
 		log.Fatalf("could not place bid: %v", err)
@@ -62,7 +67,7 @@ func (c *Client) sendBid(amount int32) {
 		c.sendBid(amount)
 		log.Fatalf("Unknown status: %v", resp.Status)
 	}
-
+	cancel()
 }
 
 func (c *Client) requestResult() {
@@ -104,7 +109,7 @@ func (c *Client) switchServer() {
 }
 func (c *Client) connectToServer() error {
 	// Find primary server and create connection
-
+	j := 0
 	for i := 5001; i < 5010; i++ {
 
 		// Start by connecting to port 5001 and call GetPrimaryServer to find the primary server from that server
@@ -113,18 +118,31 @@ func (c *Client) connectToServer() error {
 		//Continue to loop around until we find the primary server
 		if i == 5009 {
 			i = 5001
+			j++
+		}
+		if j == 10 {
+			log.Fatalf("Could not find primary server, shutting down client")
 		}
 		conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
 		if err != nil {
 			log.Printf("could not connect to server on port: %s", port)
+			continue
 		}
 		target := Auction.NewAuctionClient(conn)
 
-		//isPrimary, _ := target.GetPrimaryServer(context.Background(), &Auction.Empty{})
+		clientDeadline := time.Now().Add(5 * time.Second)
+		ctx, cancel := context.WithDeadline(context.Background(), clientDeadline)
 
-		//if !isPrimary.PrimaryStatus {
-		//	continue
-		//}
+		isPrimary, err := target.GetPrimaryServer(ctx, &Auction.Empty{})
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		if !isPrimary.PrimaryStatus {
+			continue
+		}
+		cancel()
 		log.Printf("Client %d connected to server on port: %s", c.Id, port)
 
 		// Set the auctioneer to the primary server
@@ -151,8 +169,18 @@ func createRandId() int32 {
 
 // main method
 func main() {
+
+	// Set up the log
+	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("[SERVER]: error opening file: %v", err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
+
+	//Create client
 	client := CreateClient()
-	err := client.connectToServer()
+	err = client.connectToServer()
 	if err != nil {
 		log.Printf("Client: %V, Could not connect to server", client.Id)
 	}

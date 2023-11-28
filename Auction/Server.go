@@ -43,10 +43,9 @@ type ConsensusServer struct {
 // AuctionServer This struct is used in the Client/Server interaction happening in the Auction service
 type AuctionServer struct {
 	Auction.UnimplementedAuctionServer
-	AuctionServer  Auction.AuctionServer
-	AuctionClients []Auction.AuctionClient
-	Auction        *ActiveAuction
-	Server         *Server
+	AuctionServer Auction.AuctionServer
+	Auction       *ActiveAuction
+	Server        *Server
 }
 
 // ActiveAuction This struct is used as a container to collect the relevant auction data
@@ -63,8 +62,11 @@ type ActiveAuction struct {
 func CreateServer() *Server {
 	// TODO Maybe the ConsensusServer and AuctionServer needs to be initialised somehow
 	s := &Server{
-		Port:            "1",
-		ConsensusServer: &ConsensusServer{},
+		Port: "1",
+		ConsensusServer: &ConsensusServer{
+			BackupList: make(map[string]Consensus.ConsensusClient),
+			PortList:   make([]string, 0),
+		},
 		AuctionServer: &AuctionServer{
 			Auction: &ActiveAuction{
 				HighestBid:    0,
@@ -76,7 +78,6 @@ func CreateServer() *Server {
 		isPrimaryServer: false,
 	}
 
-	s.ConsensusServer.BackupList = make(map[string]Consensus.ConsensusClient)
 	s.AuctionServer.Server = s
 	s.ConsensusServer.Server = s
 
@@ -119,10 +120,12 @@ func (s *Server) StartServer() error {
 	s.ConsensusServer.sendConnection()
 
 	//
-	port, _ := s.ConsensusServer.FindSuccessor()
-	target := s.ConsensusServer.BackupList[port]
-	s.ConsensusServer.PingServer(&target)
-	//TODO Initiate the ping process only ping the next node in the ring
+	if len(s.ConsensusServer.PortList) != 0 {
+		port, _ := s.ConsensusServer.FindSuccessor()
+		target := s.ConsensusServer.BackupList[port]
+		s.ConsensusServer.PingServer(target)
+	}
+
 	return nil
 }
 
@@ -179,31 +182,32 @@ func (s *ConsensusServer) ConnectStatus(_ context.Context, inComing *Consensus.A
 
 	// If the inComing port is not contained in the BackupList, this server will connect to the inComing port
 	if _, contained := s.BackupList[inComing.Port]; !contained {
-		// Add inComing port to portliest
+		// Add inComing port to portlist
 		s.PortList = append(s.PortList, inComing.Port)
 
-		// Let other sever initialise fully
+		// Let other server initialise fully
 		time.Sleep(time.Second * 1)
 
-		fmt.Println("Will now tro to call consensusConnect on port: " + inComing.Port)
+		fmt.Println("Will now try to call consensusConnect on port: " + inComing.Port)
 		err := s.ConsensusConnect(inComing.Port)
 		if err != nil {
-			fmt.Println("Happened error when trying to call ConsensusConnect to port: " + inComing.Port)
+			fmt.Println("Error happened when trying to call ConsensusConnect to port: " + inComing.Port)
 			return &Consensus.Ack{
 				Port:   s.Server.Port,
 				Status: "1",
 			}, nil
 		}
 		fmt.Printf("server %s conncted to server %s \n", s.Server.Port, inComing.Port)
-		/*
-			// Set new server as successor
-			if len(s.PortList) == 1 {
-				target := s.BackupList[inComing.Port]
-				s.PingServer(&target)
-				log.Printf("Server %s has set server %s as successor", s.Server.Port, inComing.Port)
-			}
 
-		*/
+		// Set new server as successor
+		if len(s.PortList) >= 1 {
+
+			targetPort, _ := s.FindSuccessor()
+			target := s.BackupList[targetPort]
+			s.PingServer(target)
+			log.Printf("Server %s has set server %s as successor", s.Server.Port, inComing.Port)
+		}
+
 	}
 
 	log.Printf("Server %s connected to backup server: %s \n", s.Server.Port, inComing.Port)
@@ -323,29 +327,33 @@ func (s *ConsensusServer) PingServer(target Consensus.ConsensusClient) {
 	ack := &Consensus.Ack{
 		Status: "4",
 	}
-	errCh := make(chan error)
 
 	for {
-		time.Sleep(10 * time.Second) // Every 5 seconds the server should ping the other servers
+		time.Sleep(3 * time.Second) // Every 3 seconds the server should ping the other servers
 
-		//TODO Get primary serverstatus
-		_, err := target.Ping(context.Background(), ack)
-		if err != nil {
-			errCh <- err
+		failure := ""
+
+		clientDeadline := time.Now().Add(5 * time.Second)
+		ctx, cancel := context.WithDeadline(context.Background(), clientDeadline)
+
+		_, err := target.Ping(ctx, ack)
+		if err != nil || errors.Is(ctx.Err(), context.Canceled) {
+			// Handle the error if needed
+			failure = "failure"
 		}
-		// Send the error to the channel
+		cancel()
 
 		//Get Port of client from backuplist
 		targetPort := ""
 		for port, server := range s.BackupList {
-			if &server == target {
+			if server == target {
 				targetPort = port
 			}
 		}
 		// Wait for either the goroutine to complete or the timeout
 
-		select {
-		case err := <-errCh:
+		switch {
+		case failure == "failure":
 			//remove server from backuplist
 			// Handle the error if needed
 			if err != nil {
@@ -367,20 +375,17 @@ func (s *ConsensusServer) PingServer(target Consensus.ConsensusClient) {
 
 				}
 			}
-		case <-time.After(10 * time.Second):
-			// Timeout after 10 seconds
-			fmt.Println("Timeout reached, the goroutine did not complete in time.")
+		case failure == "":
+			continue
 		}
 	}
 	//If the code reaches this point, it's time to find a new successor
 	port, err := s.FindSuccessor()
-	if err != nil {
-		log.Printf("Could not find successor: %v", err)
+	if err == nil {
+		client := s.BackupList[port]
+		s.PingServer(client)
 	}
-	client := s.BackupList[port]
-
-	s.PingServer(&client)
-	log.Printf("Could not ping server")
+	log.Printf("Could not find successor: %v", err)
 
 }
 
@@ -580,9 +585,10 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 	}
 }
 
-func (c *AuctionServer) getPrimaryServer(ctx context.Context, empty *Auction.Empty) (*Auction.ServerResponse, error) {
+func (c *AuctionServer) GetPrimaryServer(_ context.Context, _ *Auction.Empty) (*Auction.ServerResponse, error) {
 	isPrimary := c.Server.isPrimaryServer
-	return &Auction.ServerResponse{PrimaryStatus: isPrimary}, nil
+	resp := &Auction.ServerResponse{PrimaryStatus: isPrimary}
+	return resp, nil
 }
 
 func (s *AuctionServer) validateBid(bidRequest *Auction.BidRequest) bool {
