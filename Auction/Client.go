@@ -40,7 +40,7 @@ func (c *Client) sendBid(amount int32) {
 		log.Printf("could not place bid, switching Server %v", err)
 		c.switchServer()
 		c.sendBid(amount)
-		
+
 	}
 
 	// success : bid accepted and synced between servers
