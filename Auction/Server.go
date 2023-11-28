@@ -181,7 +181,7 @@ func (s *ConsensusServer) sendConnection() {
 		} else {
 			_, err := s.BackupList[s.PortList[0]].ConnectStatus(context.Background(), connectionAck)
 			if err != nil {
-				log.Printf("(SendConnection)Could not connect to backup server %s: %v\n", s.PortList[0], err)
+				log.Printf("Primary %v Could not connect to backup server %s: %v\n", s.Server.Port, s.PortList[0], err)
 			}
 		}
 
@@ -291,17 +291,17 @@ func (s *ConsensusServer) sendSync(bidReq *Auction.BidRequest) error {
 		switch ack.Status {
 		case "0":
 			//Success
-			log.Printf("Synced with backup server: %v", port)
+			log.Printf("Primary Server %v synced with backup server: %v", s.Server.Port, port)
 			wg.Done()
 		case "1":
 			//Fail
 			//TODO Handle fail - Is the server still alive?
-			log.Printf("Could not sync with backup server: %v", target)
+			log.Printf("Primary Server %v Could not sync with backup server: %v", s.Server.Port, target)
 			return err
 		case "2":
 			// Exception
 			// TODO Was would happen in this case?
-			log.Printf("Exception when syncing with backup server: %v", target)
+			log.Printf("Primary Server %v: Exception when syncing with backup server: %v", s.Server.Port, target)
 			return err
 		}
 	}
@@ -347,7 +347,7 @@ func (s *ConsensusServer) PingServer(target Consensus.ConsensusClient) {
 	}
 
 	for {
-		time.Sleep(3 * time.Second) // Every 3 seconds the server should ping the other servers
+		time.Sleep(1 * time.Second) // Every 1 seconds the server should ping the other servers
 
 		failure := ""
 
@@ -615,7 +615,7 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 	} else if !s.Auction.isStarted && !s.Auction.isActive {
 		resp.Status = "NotStarted"
 		return resp, nil
-	} else if s.Auction.isStarted && s.Auction.Duration > requestTime.Sub(s.Auction.timeofStart).Seconds() {
+	} else if s.Auction.isStarted && s.Auction.Duration < requestTime.Sub(s.Auction.timeofStart).Seconds() {
 		s.Auction.isActive = false
 		resp.Status = "EndResult"
 	} else {
@@ -627,7 +627,7 @@ func (s *AuctionServer) Result(ctx context.Context, resultRequest *Auction.Resul
 
 func (c *AuctionServer) GetPrimaryServer(_ context.Context, _ *Auction.Empty) (*Auction.ServerResponse, error) {
 	isPrimary := c.Server.isPrimaryServer
-	resp := &Auction.ServerResponse{PrimaryStatus: isPrimary}
+	resp := &Auction.ServerResponse{PrimaryStatus: isPrimary, PrimaryServerPort: c.Server.ConsensusServer.PortOfPrimary}
 	return resp, nil
 }
 

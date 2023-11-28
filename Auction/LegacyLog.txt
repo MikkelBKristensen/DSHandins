@@ -1,3 +1,5 @@
+##THIS IS THE LOG GIVEN IN THE ARTICLE##
+
 2023/11/28 21:59:53 File: ServerPorts is empty
 2023/11/28 21:59:53 Port 5001 added to file
 2023/11/28 21:59:56 Port 5002 added to file
@@ -16,7 +18,7 @@
 2023/11/28 22:00:13 Bid from Client 5691 was not accepted
 2023/11/28 22:00:14 Client 5691 wants to request result
 2023/11/28 22:00:14 Client 5691 connected to server on port: 5001
-2023/11/28 22:00:14 Auction is still running, highest bidder is: 651 with: 10 
+2023/11/28 22:00:14 Auction is still running, highest bidder is: 651 with: 10
 2023/11/28 22:00:21 Client 5691 wants to send bid of: 15
 2023/11/28 22:00:21 Client 5691 connected to server on port: 5001
 2023/11/28 22:00:21 Server 5002 was successfully synced with primary server
@@ -25,7 +27,7 @@
 2023/11/28 22:00:21 Bid from Client 5691 was accepted
 2023/11/28 22:00:25 Client 5691 wants to request result
 2023/11/28 22:00:25 Client 5691 connected to server on port: 5001
-2023/11/28 22:00:25 Auction is still running, highest bidder is: 5691 with: 15 
+2023/11/28 22:00:25 Auction is still running, highest bidder is: 5691 with: 15
 2023/11/28 22:00:33 Primary 5002 Could not connect to backup server 5001: rpc error: code = Unavailable desc = error reading from server: EOF
 2023/11/28 22:00:35 Server: 5002 has detected that the primary server is down, initiating election
 2023/11/28 22:00:35 Server: 5002 is the new primary server, no other backup server was found
@@ -37,7 +39,7 @@
 2023/11/28 22:01:15 Client 651 wants to request result
 2023/11/28 22:01:15 Client 651 could not connect to server on port: 5001
 2023/11/28 22:01:15 Client 651 connected to server on port: 5002
-2023/11/28 22:01:15 Auction is still running, highest bidder is: 651 with: 20 
+2023/11/28 22:01:15 Auction is still running, highest bidder is: 651 with: 20
 2023/11/28 22:01:27 Client 5691 wants to send bid of: 35
 2023/11/28 22:01:27 Client 5691 could not connect to server on port: 5001
 2023/11/28 22:01:27 Client 5691 connected to server on port: 5002
@@ -46,4 +48,5 @@
 2023/11/28 22:01:41 Client 5691 wants to request result
 2023/11/28 22:01:41 Client 5691 could not connect to server on port: 5001
 2023/11/28 22:01:41 Client 5691 connected to server on port: 5002
-2023/11/28 22:01:41 Auction is over, highest bidder is: 5691 with: 35 
+2023/11/28 22:01:41 Auction is over, highest bidder is: 5691 with: 35
+

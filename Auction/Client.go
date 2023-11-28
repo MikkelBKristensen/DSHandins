@@ -15,6 +15,7 @@ import (
 
 type Client struct {
 	Id         int32
+	ServerPort int32
 	auctioneer Auction.AuctionClient
 }
 
@@ -32,14 +33,16 @@ func (c *Client) sendBid(amount int32) {
 		Id:  c.Id,
 		Bid: amount,
 	}
+	//Switch server no mather what, so we ensure that our server is always primary
+	c.switchServer()
 	clientDeadline := time.Now().Add(10 * time.Second)
 	ctx, cancel := context.WithDeadline(context.Background(), clientDeadline)
 	resp, err := c.auctioneer.Bid(ctx, &bid)
 
 	if err != nil || errors.Is(ctx.Err(), context.Canceled) {
 		log.Printf("could not place bid, switching Server %v", err)
-		c.switchServer()
-		c.sendBid(amount)
+
+		//c.sendBid(amount)
 
 	}
 
@@ -50,14 +53,14 @@ func (c *Client) sendBid(amount int32) {
 	//TODO Add log
 	switch resp.Status {
 	case "success":
-		log.Println("Bid was accepted")
+		log.Printf("Bid from Client %v was accepted", c.Id)
 		return //We don't need to do anything at this point
 
 	case "fail":
-		log.Println("Bid was not accepted")
+		log.Printf("Bid from Client %v was not accepted", c.Id)
 
 	case "exception":
-		log.Printf("Bid was not accepted, exception: %v", resp.Status)
+		log.Printf("Bid from Client %v was not accepted, exception: %v", c.Id, resp.Status)
 
 		//Maybe incorporate a goroutine here, to find the lead server faster
 		c.switchServer()
@@ -76,7 +79,7 @@ func (c *Client) requestResult() {
 	result := Auction.ResultRequest{
 		Id: c.Id,
 	}
-
+	c.switchServer()
 	//src: https://grpc.io/blog/deadlines/
 	clientDeadline := time.Now().Add(5 * time.Second)
 	ctx, cancel := context.WithDeadline(context.Background(), clientDeadline)
@@ -85,18 +88,20 @@ func (c *Client) requestResult() {
 	//Check if the context deadline has exceeded
 	if err != nil || errors.Is(ctx.Err(), context.Canceled) {
 		log.Printf("could not request result: %v", err)
-		c.switchServer()
-		c.requestResult()
+
 	}
 	cancel()
 
 	switch resp.Status {
 	case "EndResult":
-		log.Printf("Auction is over, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
+		log.Printf("Auction is over, highest bidder is: %d with: %d ", resp.Id, resp.Bid)
+		fmt.Printf("Auction is over, highest bidder is: %d with: %d ", resp.Id, resp.Bid)
 	case "NotStarted":
 		log.Println("You must bid to start the auction, no bid has been placed yet.")
+		fmt.Println("You must bid to start the auction, no bid has been placed yet.")
 	case "Result":
-		log.Printf("Auction is still running, highest bidder is: %d with: %d DKK", resp.Id, resp.Bid)
+		log.Printf("Auction is still running, highest bidder is: %d with: %d ", resp.Id, resp.Bid)
+		fmt.Printf("Auction is still running, highest bidder is: %d with: %d ", resp.Id, resp.Bid)
 	}
 	//States for an auction: result || the highest bid
 
@@ -111,7 +116,8 @@ func (c *Client) switchServer() {
 func (c *Client) connectToServer() error {
 	// Find primary server and create connection
 	j := 0
-	for i := 5001; i < 5010; i++ {
+
+	for i := 5001; i < 5004; i++ {
 
 		// Start by connecting to port 5001 and call GetPrimaryServer to find the primary server from that server
 		port := strconv.Itoa(i)
@@ -120,13 +126,15 @@ func (c *Client) connectToServer() error {
 		if i == 5009 {
 			i = 5001
 			j++
+			time.Sleep(2 * time.Second)
 		}
+
 		if j == 10 {
 			log.Fatalf("Could not find primary server, shutting down client")
 		}
-		conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:"+port, grpc.WithInsecure(), grpc.WithBlock(), grpc.FailOnNonTempDialError(true))
 		if err != nil {
-			log.Printf("could not connect to server on port: %s", port)
+			log.Printf("Client %v could not connect to server on port: %s", c.Id, port)
 			continue
 		}
 		target := Auction.NewAuctionClient(conn)
@@ -136,7 +144,7 @@ func (c *Client) connectToServer() error {
 
 		isPrimary, err := target.GetPrimaryServer(ctx, &Auction.Empty{})
 		if err != nil {
-			fmt.Println(err)
+			log.Printf("Client %v exprienced error: %v ", c.Id, err)
 			continue
 		}
 
@@ -148,6 +156,8 @@ func (c *Client) connectToServer() error {
 
 		// Set the auctioneer to the primary server
 		c.auctioneer = target
+		c.ServerPort = int32(i)
+
 		return nil
 	}
 	return nil
@@ -209,7 +219,7 @@ func main() {
 	// Set up the log
 	f, err := os.OpenFile("logfile", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("[SERVER]: error opening file: %v", err)
+		log.Fatalf("[CLIENT]: error opening file: %v", err)
 	}
 	defer f.Close()
 	log.SetOutput(f)
