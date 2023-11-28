@@ -1,4 +1,5 @@
 ##THIS IS THE LOG GIVEN IN THE ARTICLE##
+Link to GITHUB: https://github.com/MikkelBKristensen/DSHandins/tree/main/Auction
 
 2023/11/28 21:59:53 File: ServerPorts is empty
 2023/11/28 21:59:53 Port 5001 added to file
